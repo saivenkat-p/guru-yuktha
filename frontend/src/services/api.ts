@@ -5,8 +5,24 @@ import type {
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api/v1';
 
+export const AUTH_TOKEN_KEY = 'guru_yuktha_token';
+export const LEGACY_TOKEN_KEY = 'student360_token';
+
+export function getAuthToken(): string | null {
+  return localStorage.getItem(AUTH_TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY);
+}
+
+export function setAuthToken(token: string): void {
+  localStorage.setItem(AUTH_TOKEN_KEY, token);
+}
+
+export function removeAuthToken(): void {
+  localStorage.removeItem(AUTH_TOKEN_KEY);
+  localStorage.removeItem(LEGACY_TOKEN_KEY);
+}
+
 export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const token = localStorage.getItem('student360_token');
+  const token = getAuthToken();
   
   const headers: Record<string, string> = {
     ...(options.headers as Record<string, string> || {}),
@@ -148,4 +164,3 @@ export const api = {
   getExportCsvUrl: () => `${API_BASE}/reports/export/csv`,
   getEvidenceFileUrl: (fileId: number) => `${API_BASE}/evidence/file/${fileId}`,
 };
-

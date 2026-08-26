@@ -1,0 +1,44 @@
+# Environments & Local Secrets
+.env
+.env.local
+.env.*.local
+*.env
+
+# Python & Backend Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Databases & Local Data
+*.db
+*.sqlite3
+backend/student360.db
+backend/guruyuktha.db
+
+# Uploaded Files
+uploads/*
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Node & Frontend Build
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+.vercel
+.turbo
+
+# IDE & OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

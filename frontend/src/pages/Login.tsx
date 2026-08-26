@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { GraduationCap, Mail, Lock, User, Building, BookOpen, BadgeCheck, AlertCircle, ArrowRight } from 'lucide-react';
-import { api } from '../services/api';
+import { api, setAuthToken } from '../services/api';
 
 interface LoginProps {
   onAuthSuccess: (token: string, user: any) => void;
@@ -12,7 +12,7 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
   const [error, setError] = useState<string | null>(null);
 
   // Sign In Form
-  const [signInEmail, setSignInEmail] = useState('teacher@student360.edu');
+  const [signInEmail, setSignInEmail] = useState('teacher@guruyuktha.edu');
   const [signInPassword, setSignInPassword] = useState('teacher123');
 
   // Sign Up Form
@@ -31,7 +31,7 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
     try {
       const res = await api.login({ email: signInEmail, password: signInPassword });
       if (res.access_token) {
-        localStorage.setItem('student360_token', res.access_token);
+        setAuthToken(res.access_token);
         onAuthSuccess(res.access_token, res.user);
       } else {
         setError('Login failed: Token not returned.');
@@ -58,7 +58,7 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
         employee_code: signUpEmpCode || undefined,
       });
       if (res.access_token) {
-        localStorage.setItem('student360_token', res.access_token);
+        setAuthToken(res.access_token);
         onAuthSuccess(res.access_token, res.user);
       }
     } catch (err: any) {
@@ -69,7 +69,7 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
   };
 
   const fillDemoCredentials = () => {
-    setSignInEmail('teacher@student360.edu');
+    setSignInEmail('teacher@guruyuktha.edu');
     setSignInPassword('teacher123');
   };
 
@@ -85,9 +85,9 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
           <div className="w-16 h-16 bg-white/10 rounded-2xl mx-auto flex items-center justify-center backdrop-blur-md mb-3 border border-white/20">
             <GraduationCap className="w-9 h-9 text-white" />
           </div>
-          <h1 className="text-2xl font-black tracking-tight">Student360</h1>
+          <h1 className="text-2xl font-black tracking-tight">Guru Yuktha</h1>
           <p className="text-xs text-indigo-100 mt-1 font-medium">
-            Academic Performance & Outcome Tracking System
+            Academic Performance &amp; Outcome Tracking System
           </p>
         </div>
 
@@ -137,7 +137,7 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
                   required
                   value={signInEmail}
                   onChange={(e) => setSignInEmail(e.target.value)}
-                  placeholder="teacher@student360.edu"
+                  placeholder="teacher@guruyuktha.edu"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
@@ -181,7 +181,7 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
                 onClick={fillDemoCredentials}
                 className="text-xs text-indigo-600 font-semibold hover:underline cursor-pointer"
               >
-                Use Demo Teacher Account (teacher@student360.edu)
+                Use Demo Teacher Account (teacher@guruyuktha.edu)
               </button>
             </div>
           </form>

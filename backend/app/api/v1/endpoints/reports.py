@@ -53,7 +53,7 @@ def generate_student_pdf_report(student_id: int, db: Session = Depends(get_db)):
         )
 
         story = []
-        story.append(Paragraph("Student360 — Academic Progress Report", title_style))
+        story.append(Paragraph("Guru Yuktha — Academic Progress Report", title_style))
         story.append(Paragraph(f"Institution: GDC Ramachandrapuram | Lecturer: Md. Shahazadi Begum", sub_style))
         story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#E5E7EB'), spaceAfter=15))
 
@@ -109,7 +109,7 @@ def generate_student_pdf_report(student_id: int, db: Session = Depends(get_db)):
         )
     else:
         # Text fallback if ReportLab not present
-        content = f"STUDENT360 ACADEMIC REPORT\nName: {student.name}\nRoll: {student.roll_number}\nCourse: {student.course}\n"
+        content = f"GURU YUKTHA ACADEMIC REPORT\nName: {student.name}\nRoll: {student.roll_number}\nCourse: {student.course}\n"
         return Response(content=content, media_type="text/plain")
 
 @router.get("/class/summary/pdf")
@@ -122,7 +122,7 @@ def generate_class_summary_pdf(db: Session = Depends(get_db)):
         styles = getSampleStyleSheet()
 
         story = [
-            Paragraph("Student360 — Class Activity Summary Report", styles['Heading1']),
+            Paragraph("Guru Yuktha — Class Activity Summary Report", styles['Heading1']),
             Paragraph("Class: B.A. (HEP) II Sem | Department of English", styles['Normal']),
             Spacer(1, 15)
         ]
@@ -142,7 +142,7 @@ def generate_class_summary_pdf(db: Session = Depends(get_db)):
         buffer.seek(0)
         return StreamingResponse(buffer, media_type="application/pdf", headers={"Content-Disposition": "attachment; filename=Class_Summary_Report.pdf"})
     else:
-        return Response(content="Student360 Class Summary Report", media_type="text/plain")
+        return Response(content="Guru Yuktha Class Summary Report", media_type="text/plain")
 
 @router.get("/export/csv")
 def export_custom_csv(db: Session = Depends(get_db)):
@@ -160,5 +160,5 @@ def export_custom_csv(db: Session = Depends(get_db)):
     return StreamingResponse(
         io.BytesIO(output.getvalue().encode('utf-8')),
         media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename=Student360_Export_{datetime.utcnow().strftime('%Y%m%d')}.csv"}
+        headers={"Content-Disposition": f"attachment; filename=GuruYuktha_Export_{datetime.utcnow().strftime('%Y%m%d')}.csv"}
     )

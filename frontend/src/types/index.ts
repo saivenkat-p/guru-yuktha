@@ -147,7 +147,7 @@ export interface ClassInsights {
 }
 
 // Runtime dummy object exports for JS bundling compatibility
-export const TYPES_MODULE = 'STUDENT360_TYPES';
+export const TYPES_MODULE = 'GURU_YUKTHA_TYPES';
 export const DashboardSummary = {};
 export const AttentionStudent = {};
 export const ClassInsights = {};

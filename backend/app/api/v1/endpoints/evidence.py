@@ -45,7 +45,7 @@ def download_evidence_file(evidence_id: int, db: Session = Depends(get_db)):
     evidence = db.query(EvidenceFile).filter(EvidenceFile.id == evidence_id).first()
     if not evidence or not os.path.exists(evidence.file_path):
         # Fallback dummy sample file for demo resilience
-        dummy_content = b"Student360 Academic Evidence Document\nGenerated for verification."
+        dummy_content = b"Guru Yuktha Academic Evidence Document\nGenerated for verification."
         temp_path = os.path.join(settings.UPLOAD_DIR, f"evidence_{evidence_id}.pdf")
         with open(temp_path, "wb") as f:
             f.write(dummy_content)

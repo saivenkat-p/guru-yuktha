@@ -36,7 +36,7 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
             <GraduationCap className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-white tracking-tight leading-none">Student360</h1>
+            <h1 className="text-lg font-bold text-white tracking-tight leading-none">Guru Yuktha</h1>
             <p className="text-[10px] text-indigo-300 font-medium tracking-wide mt-1 uppercase">Academic System</p>
           </div>
         </div>

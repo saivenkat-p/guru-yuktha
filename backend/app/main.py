@@ -13,23 +13,14 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
 
-# CORS Configuration: allow local dev + any temporary Cloudflare Quick Tunnel domain
-origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-]
-
+# Production CORS Configuration: allow configured origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_origin_regex=r"https://.*\.trycloudflare\.com",
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 # Mount uploads directory
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
@@ -48,7 +39,7 @@ def startup_event():
         from app.models.models import Student
         count = db.query(Student).count()
         if count == 0:
-            print("Auto-seeding empty database...")
+            print("Auto-seeding empty Guru Yuktha database...")
             seed_db()
     except Exception as e:
         print(f"Startup DB check error: {e}")
@@ -58,7 +49,7 @@ def startup_event():
 @app.get("/")
 def root():
     return {
-        "title": "Student360 API",
+        "title": "Guru Yuktha API",
         "version": "1.0.0",
         "docs_url": "/docs",
         "tagline": "Navigate. Monitor. Support."

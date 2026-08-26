@@ -56,7 +56,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     return (
       <div className="bg-slate-50 min-h-screen p-8 flex flex-col items-center justify-center text-slate-500">
         <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-3"></div>
-        <p className="text-xs font-bold text-indigo-700">Loading Student360 Overview...</p>
+        <p className="text-xs font-bold text-indigo-700">Loading Guru Yuktha Overview...</p>
       </div>
     );
   }

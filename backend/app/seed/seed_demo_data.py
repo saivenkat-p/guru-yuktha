@@ -18,11 +18,11 @@ def seed_db():
 
     db: Session = SessionLocal()
     try:
-        print("Seeding Student360 Database...")
+        print("Seeding Guru Yuktha Database...")
 
         # 1. Create Default Teacher User
         teacher_user = User(
-            email="teacher@student360.edu",
+            email="teacher@guruyuktha.edu",
             hashed_password=get_password_hash("teacher123"),
             full_name="Md. Shahazadi Begum",
             role=UserRole.TEACHER,

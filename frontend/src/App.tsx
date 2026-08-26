@@ -13,11 +13,11 @@ import { AddActivityModal } from './components/forms/AddActivityModal';
 import { MarkAttendanceModal } from './components/forms/MarkAttendanceModal';
 import { AccountProfileModal } from './components/profile/AccountProfileModal';
 import type { Student } from './types';
-import { api } from './services/api';
+import { api, getAuthToken, removeAuthToken } from './services/api';
 
 export function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return !!localStorage.getItem('student360_token');
+    return !!getAuthToken();
   });
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'students' | 'materials' | 'reports'>('dashboard');
@@ -32,7 +32,7 @@ export function App() {
     department: 'English',
     collegeName: 'GDC Ramachandrapuram',
     employeeCode: 'EMP-2024-ENG',
-    email: 'teacher@student360.edu',
+    email: 'teacher@guruyuktha.edu',
     avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
   });
 
@@ -45,7 +45,7 @@ export function App() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   const loadInitialData = async () => {
-    const token = localStorage.getItem('student360_token');
+    const token = getAuthToken();
     if (!token) {
       setIsAuthenticated(false);
       setLoadingAuth(false);
@@ -75,7 +75,7 @@ export function App() {
       setIsAuthenticated(true);
     } catch (err) {
       console.error('Auth verification failed:', err);
-      localStorage.removeItem('student360_token');
+      removeAuthToken();
       setIsAuthenticated(false);
     } finally {
       setLoadingAuth(false);
@@ -91,7 +91,7 @@ export function App() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('student360_token');
+    removeAuthToken();
     setIsAuthenticated(false);
     setSelectedStudentId(null);
     setActiveTab('dashboard');
@@ -154,7 +154,7 @@ export function App() {
     return (
       <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white p-4">
         <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4" />
-        <p className="text-xs font-bold text-indigo-300">Initializing Student360 Application...</p>
+        <p className="text-xs font-bold text-indigo-300">Initializing Guru Yuktha Application...</p>
       </div>
     );
   }
