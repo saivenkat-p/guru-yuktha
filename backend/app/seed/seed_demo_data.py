@@ -12,8 +12,9 @@ from app.models.models import (
     PresentationMode, ParticipationLevel, AttendanceStatus, MaterialType
 )
 
-def seed_db():
-    Base.metadata.drop_all(bind=engine)
+def seed_db(drop_first: bool = False):
+    if drop_first:
+        Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
 
     db: Session = SessionLocal()

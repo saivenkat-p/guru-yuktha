@@ -33,18 +33,22 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 def startup_event():
     # Initialize DB tables
     Base.metadata.create_all(bind=engine)
-    # Check if empty, run seed automatically
-    db = SessionLocal()
-    try:
-        from app.models.models import Student
-        count = db.query(Student).count()
-        if count == 0:
-            print("Auto-seeding empty Guru Yuktha database...")
-            seed_db()
-    except Exception as e:
-        print(f"Startup DB check error: {e}")
-    finally:
-        db.close()
+    
+    # Check if empty and SEED_DEMO_DATA is explicitly enabled
+    if settings.SEED_DEMO_DATA:
+        db = SessionLocal()
+        try:
+            from app.models.models import Student
+            count = db.query(Student).count()
+            if count == 0:
+                print("SEED_DEMO_DATA=true: Auto-seeding initial demo data for Guru Yuktha...")
+                seed_db(drop_first=False)
+        except Exception as e:
+            print(f"Startup DB seed check error: {e}")
+        finally:
+            db.close()
+    else:
+        print("SEED_DEMO_DATA is disabled (production mode). Database tables initialized without mock data.")
 
 @app.get("/")
 def root():
@@ -53,4 +57,10 @@ def root():
         "version": "1.0.0",
         "docs_url": "/docs",
         "tagline": "Navigate. Monitor. Support."
+    }
+
+@app.get("/health")
+def health():
+    return {
+        "status": "ok"
     }

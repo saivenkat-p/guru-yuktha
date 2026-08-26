@@ -68,6 +68,12 @@ def test_root_endpoint():
     assert data["title"] == "Guru Yuktha API"
     assert data["version"] == "1.0.0"
 
+def test_health_endpoint():
+    response = client.get("/health")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+
 def test_auth_login_success():
     response = client.post(
         "/api/v1/auth/login",

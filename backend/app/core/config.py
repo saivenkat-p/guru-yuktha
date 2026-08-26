@@ -4,6 +4,9 @@ from typing import List
 class Settings:
     PROJECT_NAME: str = "Guru Yuktha — Academic Navigation & Tracking System"
     API_V1_STR: str = "/api/v1"
+    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
+    
+    # Security & JWT
     SECRET_KEY: str = os.getenv("SECRET_KEY", "guruyuktha_secret_key_super_secure_2026_prod")
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
@@ -14,6 +17,9 @@ class Settings:
     if raw_db_url.startswith("postgres://"):
         raw_db_url = raw_db_url.replace("postgres://", "postgresql://", 1)
     DATABASE_URL: str = raw_db_url
+    
+    # Seeding control: default false for production safety
+    SEED_DEMO_DATA: bool = os.getenv("SEED_DEMO_DATA", "false").strip().lower() in ("true", "1", "t", "yes")
     
     # CORS Origins (comma-separated list of origins)
     CORS_ORIGINS: str = os.getenv(
