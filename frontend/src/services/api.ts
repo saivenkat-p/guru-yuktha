@@ -162,7 +162,40 @@ export const api = {
     method: 'DELETE',
   }),
 
-  // Activities Quick Actions
+  // Activities (Phase 4 Teacher-Defined Workspace)
+  getActivities: (params?: { room_id?: number; student_id?: number; type?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.room_id) query.append('room_id', String(params.room_id));
+    if (params?.student_id) query.append('student_id', String(params.student_id));
+    if (params?.type) query.append('type', params.type);
+    const str = query.toString();
+    return fetchApi<Activity[]>(`/activities${str ? `?${str}` : ''}`);
+  },
+
+  createActivity: (data: {
+    title: string;
+    description?: string;
+    room_id?: number;
+    type?: string;
+    max_marks?: number;
+    due_date?: string;
+    student_id?: number;
+    remarks?: string;
+  }) => fetchApi<Activity>('/activities', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+
+  updateActivity: (id: number, data: Partial<Activity>) => fetchApi<Activity>(`/activities/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+
+  deleteActivity: (id: number) => fetchApi<{ message: string; id: number }>(`/activities/${id}`, {
+    method: 'DELETE',
+  }),
+
+  // Activities Legacy Quick Actions (Preserved)
   createSeminar: (data: any) => fetchApi<Activity>('/activities/seminar', {
     method: 'POST',
     body: JSON.stringify(data),

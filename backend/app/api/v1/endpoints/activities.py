@@ -1,44 +1,180 @@
-from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, Form
+﻿from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
-import os
-import shutil
 from datetime import datetime
 
 from app.core.database import get_db
-from app.core.config import settings
+from app.core.security import require_teacher
 from app.models.models import (
     Activity, SeminarDetail, AssignmentDetail, PblDetail, PglDetail, EvidenceFile,
-    ActivityType, ActivityStatus, PresentationMode, ParticipationLevel, Student
+    ActivityType, ActivityStatus, PresentationMode, ParticipationLevel, Student, User, Teacher, Room
 )
 from app.schemas.schemas import (
-    ActivityOut, SeminarCreate, AssignmentCreate, PblCreate, PglCreate, GenericActivityCreate
+    ActivityOut, ActivityCreate, ActivityUpdate, SeminarCreate, AssignmentCreate, PblCreate, PglCreate, GenericActivityCreate
 )
 
 router = APIRouter()
 
+def get_or_create_teacher(user: User, db: Session) -> Teacher:
+    teacher = db.query(Teacher).filter(Teacher.user_id == user.id).first()
+    if not teacher:
+        teacher = Teacher(
+            user_id=user.id,
+            employee_code=f"EMP-{user.id:04d}",
+            department="Academic",
+            designation="Faculty",
+            college_name="Institution"
+        )
+        db.add(teacher)
+        db.commit()
+        db.refresh(teacher)
+    return teacher
+
+def format_activity_out(act: Activity) -> ActivityOut:
+    room_name = act.room.name if act.room else None
+    room_code = act.room.code if act.room else None
+    out = ActivityOut.model_validate(act)
+    out.room_name = room_name
+    out.room_code = room_code
+    return out
+
+# ================= PRIMARY TEACHER-DEFINED ACTIVITY ENDPOINTS =================
+
 @router.get("", response_model=List[ActivityOut])
 def get_activities(
-    student_id: Optional[int] = None,
-    type: Optional[str] = None,
+    room_id: Optional[int] = Query(None),
+    student_id: Optional[int] = Query(None),
+    type: Optional[str] = Query(None),
+    current_user: User = Depends(require_teacher),
     db: Session = Depends(get_db)
 ):
-    query = db.query(Activity)
+    teacher = get_or_create_teacher(current_user, db)
+    query = db.query(Activity).filter(Activity.teacher_id == teacher.id)
+
+    if room_id:
+        query = query.filter(Activity.room_id == room_id)
     if student_id:
         query = query.filter(Activity.student_id == student_id)
-    if type:
-        query = query.filter(Activity.type == type)
+    if type and type.upper() != "ALL":
+        query = query.filter(Activity.type == type.upper())
 
     activities = query.order_by(Activity.created_at.desc()).all()
-    return [ActivityOut.model_validate(a) for a in activities]
+    return [format_activity_out(a) for a in activities]
+
+@router.post("", response_model=ActivityOut, status_code=status.HTTP_201_CREATED)
+def create_activity(
+    act_in: ActivityCreate,
+    current_user: User = Depends(require_teacher),
+    db: Session = Depends(get_db)
+):
+    teacher = get_or_create_teacher(current_user, db)
+
+    # Validate room ownership if room_id is passed
+    room = None
+    if act_in.room_id:
+        room = db.query(Room).filter(Room.id == act_in.room_id).first()
+        if not room:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Room not found")
+        if room.teacher_id != teacher.id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access forbidden: You cannot attach activities to another teacher's room.")
+
+    activity = Activity(
+        teacher_id=teacher.id,
+        room_id=act_in.room_id,
+        student_id=act_in.student_id,
+        type=(act_in.type or "ACTIVITY").upper(),
+        title=act_in.title.strip(),
+        description=act_in.description.strip() if act_in.description else None,
+        status=ActivityStatus.IN_PROGRESS,
+        max_marks=act_in.max_marks or 10.0,
+        due_date=act_in.due_date,
+        remarks=act_in.remarks,
+        created_by=current_user.full_name
+    )
+    db.add(activity)
+    db.commit()
+    db.refresh(activity)
+
+    return format_activity_out(activity)
+
+@router.put("/{activity_id}", response_model=ActivityOut)
+def update_activity(
+    activity_id: int,
+    act_in: ActivityUpdate,
+    current_user: User = Depends(require_teacher),
+    db: Session = Depends(get_db)
+):
+    teacher = get_or_create_teacher(current_user, db)
+    activity = db.query(Activity).filter(Activity.id == activity_id).first()
+    if not activity:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Activity not found")
+
+    if activity.teacher_id != teacher.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access forbidden: You do not own this activity.")
+
+    if act_in.room_id is not None:
+        if act_in.room_id > 0:
+            room = db.query(Room).filter(Room.id == act_in.room_id).first()
+            if not room or room.teacher_id != teacher.id:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid room_id: You do not own this room.")
+            activity.room_id = room.id
+        else:
+            activity.room_id = None
+
+    if act_in.title is not None:
+        activity.title = act_in.title.strip()
+    if act_in.description is not None:
+        activity.description = act_in.description.strip()
+    if act_in.type is not None:
+        activity.type = act_in.type.upper()
+    if act_in.status is not None:
+        activity.status = act_in.status
+    if act_in.marks_obtained is not None:
+        activity.marks_obtained = act_in.marks_obtained
+    if act_in.max_marks is not None:
+        activity.max_marks = act_in.max_marks
+    if act_in.due_date is not None:
+        activity.due_date = act_in.due_date
+    if act_in.remarks is not None:
+        activity.remarks = act_in.remarks
+
+    db.commit()
+    db.refresh(activity)
+    return format_activity_out(activity)
+
+@router.delete("/{activity_id}")
+def delete_activity(
+    activity_id: int,
+    current_user: User = Depends(require_teacher),
+    db: Session = Depends(get_db)
+):
+    teacher = get_or_create_teacher(current_user, db)
+    activity = db.query(Activity).filter(Activity.id == activity_id).first()
+    if not activity:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Activity not found")
+
+    if activity.teacher_id != teacher.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access forbidden: You do not own this activity.")
+
+    db.delete(activity)
+    db.commit()
+    return {"message": "Activity deleted successfully", "id": activity_id}
+
+# ================= LEGACY ACTIVITY ENDPOINTS (PRESERVED) =================
 
 @router.post("/seminar", response_model=ActivityOut)
-def create_seminar(seminar: SeminarCreate, db: Session = Depends(get_db)):
+def create_seminar(
+    seminar: SeminarCreate,
+    current_user: User = Depends(require_teacher),
+    db: Session = Depends(get_db)
+):
+    teacher = get_or_create_teacher(current_user, db)
     student = db.query(Student).filter(Student.id == seminar.student_id).first()
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
 
     act = Activity(
+        teacher_id=teacher.id,
         student_id=seminar.student_id,
         type=ActivityType.SEMINAR,
         title=f"Seminar: {seminar.topic}",
@@ -48,7 +184,7 @@ def create_seminar(seminar: SeminarCreate, db: Session = Depends(get_db)):
         max_marks=seminar.max_marks,
         remarks=seminar.remarks,
         due_date=seminar.seminar_date,
-        created_by="Md. Shahazadi Begum"
+        created_by=current_user.full_name
     )
     db.add(act)
     db.commit()
@@ -64,11 +200,17 @@ def create_seminar(seminar: SeminarCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(act)
 
-    return ActivityOut.model_validate(act)
+    return format_activity_out(act)
 
 @router.post("/assignment", response_model=ActivityOut)
-def create_assignment(assignment: AssignmentCreate, db: Session = Depends(get_db)):
+def create_assignment(
+    assignment: AssignmentCreate,
+    current_user: User = Depends(require_teacher),
+    db: Session = Depends(get_db)
+):
+    teacher = get_or_create_teacher(current_user, db)
     act = Activity(
+        teacher_id=teacher.id,
         student_id=assignment.student_id,
         type=ActivityType.ASSIGNMENT,
         title=assignment.title,
@@ -76,7 +218,7 @@ def create_assignment(assignment: AssignmentCreate, db: Session = Depends(get_db
         max_marks=assignment.max_marks,
         remarks=assignment.remarks,
         due_date=assignment.due_date,
-        created_by="Md. Shahazadi Begum"
+        created_by=current_user.full_name
     )
     db.add(act)
     db.commit()
@@ -93,11 +235,17 @@ def create_assignment(assignment: AssignmentCreate, db: Session = Depends(get_db
     db.commit()
     db.refresh(act)
 
-    return ActivityOut.model_validate(act)
+    return format_activity_out(act)
 
 @router.post("/pbl", response_model=ActivityOut)
-def create_pbl(pbl: PblCreate, db: Session = Depends(get_db)):
+def create_pbl(
+    pbl: PblCreate,
+    current_user: User = Depends(require_teacher),
+    db: Session = Depends(get_db)
+):
+    teacher = get_or_create_teacher(current_user, db)
     act = Activity(
+        teacher_id=teacher.id,
         student_id=pbl.student_id,
         type=ActivityType.PBL,
         title=f"PBL Project: {pbl.project_title}",
@@ -105,7 +253,7 @@ def create_pbl(pbl: PblCreate, db: Session = Depends(get_db)):
         status=ActivityStatus.IN_PROGRESS if pbl.progress_percentage < 100 else ActivityStatus.COMPLETED,
         due_date=pbl.deadline,
         remarks=pbl.remarks,
-        created_by="Md. Shahazadi Begum"
+        created_by=current_user.full_name
     )
     db.add(act)
     db.commit()
@@ -122,11 +270,17 @@ def create_pbl(pbl: PblCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(act)
 
-    return ActivityOut.model_validate(act)
+    return format_activity_out(act)
 
 @router.post("/pgl", response_model=ActivityOut)
-def create_pgl(pgl: PglCreate, db: Session = Depends(get_db)):
+def create_pgl(
+    pgl: PglCreate,
+    current_user: User = Depends(require_teacher),
+    db: Session = Depends(get_db)
+):
+    teacher = get_or_create_teacher(current_user, db)
     act = Activity(
+        teacher_id=teacher.id,
         student_id=pgl.student_id,
         type=ActivityType.PGL,
         title=pgl.activity_title,
@@ -134,7 +288,7 @@ def create_pgl(pgl: PglCreate, db: Session = Depends(get_db)):
         marks_obtained=pgl.marks_obtained,
         due_date=pgl.activity_date,
         remarks=pgl.remarks,
-        created_by="Md. Shahazadi Begum"
+        created_by=current_user.full_name
     )
     db.add(act)
     db.commit()
@@ -149,20 +303,26 @@ def create_pgl(pgl: PglCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(act)
 
-    return ActivityOut.model_validate(act)
+    return format_activity_out(act)
 
 @router.post("/generic", response_model=ActivityOut)
-def create_generic_activity(activity: GenericActivityCreate, db: Session = Depends(get_db)):
+def create_generic_activity(
+    activity: GenericActivityCreate,
+    current_user: User = Depends(require_teacher),
+    db: Session = Depends(get_db)
+):
+    teacher = get_or_create_teacher(current_user, db)
     act = Activity(
+        teacher_id=teacher.id,
         student_id=activity.student_id,
         type=ActivityType.OTHER,
         title=activity.title,
         status=ActivityStatus.COMPLETED,
         due_date=activity.date or datetime.utcnow().strftime("%d/%m/%Y"),
         remarks=activity.remarks,
-        created_by="Md. Shahazadi Begum"
+        created_by=current_user.full_name
     )
     db.add(act)
     db.commit()
     db.refresh(act)
-    return ActivityOut.model_validate(act)
+    return format_activity_out(act)

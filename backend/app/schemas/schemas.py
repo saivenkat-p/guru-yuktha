@@ -272,16 +272,20 @@ class PglDetailOut(BaseModel):
 # Activity Out
 class ActivityOut(BaseModel):
     id: int
-    student_id: int
-    class_id: Optional[int]
-    type: str
+    teacher_id: Optional[int] = None
+    room_id: Optional[int] = None
+    student_id: Optional[int] = None
+    class_id: Optional[int] = None
+    type: str = "ACTIVITY"
     title: str
-    description: Optional[str]
-    status: str
-    marks_obtained: Optional[float]
-    max_marks: Optional[float]
-    remarks: Optional[str]
-    due_date: Optional[str]
+    description: Optional[str] = None
+    status: str = "COMPLETED"
+    marks_obtained: Optional[float] = None
+    max_marks: Optional[float] = 10.0
+    remarks: Optional[str] = None
+    due_date: Optional[str] = None
+    room_name: Optional[str] = None
+    room_code: Optional[str] = None
     created_at: datetime
     seminar_detail: Optional[SeminarDetailOut] = None
     assignment_detail: Optional[AssignmentDetailOut] = None
@@ -291,6 +295,28 @@ class ActivityOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+# Teacher-Defined Activity Schemas (Phase 4)
+class ActivityCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    room_id: Optional[int] = None
+    type: Optional[str] = "ACTIVITY" # ASSIGNMENT, SEMINAR, PROJECT, ASSESSMENT, ACTIVITY, CUSTOM, etc.
+    max_marks: Optional[float] = 10.0
+    due_date: Optional[str] = None
+    student_id: Optional[int] = None
+    remarks: Optional[str] = None
+
+class ActivityUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    room_id: Optional[int] = None
+    type: Optional[str] = None
+    status: Optional[str] = None
+    marks_obtained: Optional[float] = None
+    max_marks: Optional[float] = None
+    due_date: Optional[str] = None
+    remarks: Optional[str] = None
 
 # Student Schemas
 class StudentBase(BaseModel):
@@ -338,7 +364,7 @@ class StudentProfileOut(StudentOut):
 
 # Quick Action Forms Input
 class SeminarCreate(BaseModel):
-    student_id: int
+    student_id: Optional[int] = None
     topic: str
     seminar_date: str
     presentation_mode: str = "Offline"
@@ -348,7 +374,7 @@ class SeminarCreate(BaseModel):
 
 class AssignmentCreate(BaseModel):
     title: str
-    student_id: int
+    student_id: Optional[int] = None
     course: Optional[str] = "B.A. (HEP) II Sem"
     unit: Optional[str] = "Unit II"
     due_date: str
@@ -357,7 +383,7 @@ class AssignmentCreate(BaseModel):
 
 class PblCreate(BaseModel):
     project_title: str
-    student_id: int
+    student_id: Optional[int] = None
     description: Optional[str] = None
     guide_name: Optional[str] = "Md. Shahazadi Begum"
     start_date: Optional[str] = None
@@ -367,7 +393,7 @@ class PblCreate(BaseModel):
 
 class PglCreate(BaseModel):
     activity_title: str
-    student_id: int
+    student_id: Optional[int] = None
     activity_date: str
     participation_level: str = "HIGH"
     marks_obtained: Optional[float] = 9.0
@@ -375,7 +401,7 @@ class PglCreate(BaseModel):
 
 class GenericActivityCreate(BaseModel):
     title: str
-    student_id: int
+    student_id: Optional[int] = None
     type: str = "OTHER"
     date: Optional[str] = None
     remarks: Optional[str] = None

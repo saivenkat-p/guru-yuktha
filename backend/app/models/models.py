@@ -88,6 +88,7 @@ class Teacher(Base):
     user = relationship("User", back_populates="teacher_profile")
     classes = relationship("Class", back_populates="teacher")
     rooms = relationship("Room", back_populates="owner", cascade="all, delete-orphan")
+    activities = relationship("Activity", back_populates="teacher")
 
 # Learner model (for independently registered learners)
 class Learner(Base):
@@ -125,6 +126,7 @@ class Room(Base):
     memberships = relationship("RoomMembership", back_populates="room", cascade="all, delete-orphan")
     folders = relationship("Folder", back_populates="room", cascade="all, delete-orphan")
     resources = relationship("Resource", back_populates="room", cascade="all, delete-orphan")
+    activities = relationship("Activity", back_populates="room")
 
 # Dedicated Room Membership Model
 class RoomMembership(Base):
@@ -236,9 +238,11 @@ class Activity(Base):
     __tablename__ = "activities"
 
     id = Column(Integer, primary_key=True, index=True)
-    student_id = Column(Integer, ForeignKey("students.id"), nullable=False)
+    teacher_id = Column(Integer, ForeignKey("teachers.id"), nullable=True, index=True)
+    room_id = Column(Integer, ForeignKey("rooms.id"), nullable=True, index=True)
+    student_id = Column(Integer, ForeignKey("students.id"), nullable=True)
     class_id = Column(Integer, ForeignKey("classes.id"), nullable=True)
-    type = Column(String(50), nullable=False)  # SEMINAR, ASSIGNMENT, PBL, PGL, OTHER, ASSESSMENT
+    type = Column(String(50), default=ActivityType.OTHER)  # SEMINAR, ASSIGNMENT, PBL, PGL, OTHER, ASSESSMENT, CUSTOM, etc.
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     status = Column(String(50), default=ActivityStatus.COMPLETED)
@@ -250,6 +254,8 @@ class Activity(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    teacher = relationship("Teacher", back_populates="activities")
+    room = relationship("Room", back_populates="activities")
     student = relationship("Student", back_populates="activities")
     class_obj = relationship("Class", back_populates="activities")
     seminar_detail = relationship("SeminarDetail", back_populates="activity", uselist=False, cascade="all, delete-orphan")

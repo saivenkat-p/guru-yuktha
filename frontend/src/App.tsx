@@ -86,9 +86,9 @@ export function App() {
         const teacherData = meRes.teacher || meRes;
         setTeacherProfile({
           name: meRes.user.full_name,
-          designation: teacherData.designation || 'Lecturer in English',
-          department: teacherData.department || 'English',
-          collegeName: teacherData.college_name || 'GDC Ramachandrapuram',
+          designation: teacherData.designation || 'Faculty',
+          department: teacherData.department || 'Academic Department',
+          collegeName: teacherData.college_name || 'Academic Institution',
           employeeCode: teacherData.employee_code || `EMP-${meRes.user.id}`,
           email: meRes.user.email,
           avatarUrl: meRes.user.avatar_url || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',

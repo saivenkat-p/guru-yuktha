@@ -11,11 +11,11 @@ interface HeaderCardProps {
 }
 
 export const HeaderCard: React.FC<HeaderCardProps> = ({
-  teacherName = "Md. Shahazadi Begum",
-  designation = "Lecturer in English",
-  collegeName = "GDC Ramachandrapuram",
+  teacherName = "Faculty Member",
+  designation = "Faculty",
+  collegeName = "Academic Institution",
   avatarUrl = "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80",
-  unreadCount = 3,
+  unreadCount = 0,
   onOpenProfile,
 }) => {
   return (

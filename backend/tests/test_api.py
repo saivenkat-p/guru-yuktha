@@ -599,3 +599,129 @@ def test_phase3_folders_and_resources():
     assert arch_f.status_code == 200
     f_list_after = client.get(f"/api/v1/rooms/{room_id}/folders", headers=t1_headers).json()
     assert not any(f["id"] == folder_id for f in f_list_after)
+
+# =======================================================
+# PHASE 4: TEACHER-DEFINED ACTIVITY ARCHITECTURE TESTS
+# =======================================================
+
+def test_phase4_teacher_defined_activities():
+    # 1. Register Brand New Teacher A
+    t_a_signup = client.post("/api/v1/auth/signup", json={
+        "email": "teacher.alpha@guruyuktha.edu",
+        "password": "AlphaPassword123!",
+        "full_name": "Prof. Alpha",
+        "role": "TEACHER"
+    })
+    assert t_a_signup.status_code == 200
+    t_a_token = t_a_signup.json()["access_token"]
+    t_a_headers = {"Authorization": f"Bearer {t_a_token}"}
+
+    # 2. Register Brand New Teacher B
+    t_b_signup = client.post("/api/v1/auth/signup", json={
+        "email": "teacher.beta@guruyuktha.edu",
+        "password": "BetaPassword123!",
+        "full_name": "Prof. Beta",
+        "role": "TEACHER"
+    })
+    assert t_b_signup.status_code == 200
+    t_b_token = t_b_signup.json()["access_token"]
+    t_b_headers = {"Authorization": f"Bearer {t_b_token}"}
+
+    # Test 1: Brand new teacher A starts with ZERO activities
+    t_a_acts = client.get("/api/v1/activities", headers=t_a_headers)
+    assert t_a_acts.status_code == 200
+    assert len(t_a_acts.json()) == 0
+
+    # Test 2: Brand new teacher A dashboard summary returns 0 total students and 0 total activities
+    t_a_summary = client.get("/api/v1/dashboard/summary", headers=t_a_headers)
+    assert t_a_summary.status_code == 200
+    s_data = t_a_summary.json()
+    assert s_data["total_students"] == 0
+    assert s_data["teacher_name"] == "Prof. Alpha"
+    assert s_data["seminars_total"] == 0
+    assert s_data["assignments_total"] == 0
+
+    # Test 3: Teacher A creates a room
+    r_a_res = client.post("/api/v1/rooms", json={"name": "Alpha Machine Learning"}, headers=t_a_headers)
+    assert r_a_res.status_code == 201
+    room_a_id = r_a_res.json()["id"]
+
+    # Test 4: Teacher B creates a room
+    r_b_res = client.post("/api/v1/rooms", json={"name": "Beta Quantum Physics"}, headers=t_b_headers)
+    assert r_b_res.status_code == 201
+    room_b_id = r_b_res.json()["id"]
+
+    # Test 5: Teacher A creates custom activity with custom title and optional room
+    act_a1 = client.post("/api/v1/activities", json={
+        "title": "Unit 1 Assignment: Neural Network Backprop",
+        "description": "Implement backpropagation in pure NumPy.",
+        "room_id": room_a_id,
+        "type": "ASSIGNMENT",
+        "max_marks": 25.0,
+        "due_date": "2026-09-15"
+    }, headers=t_a_headers)
+    assert act_a1.status_code == 201
+    act_a1_data = act_a1.json()
+    assert act_a1_data["title"] == "Unit 1 Assignment: Neural Network Backprop"
+    assert act_a1_data["room_name"] == "Alpha Machine Learning"
+    assert act_a1_data["max_marks"] == 25.0
+    act_a1_id = act_a1_data["id"]
+
+    # Test 6: Teacher A creates a custom named activity without room (general)
+    act_a2 = client.post("/api/v1/activities", json={
+        "title": "Group Seminar on Ethics in AI",
+        "type": "SEMINAR",
+        "max_marks": 10.0
+    }, headers=t_a_headers)
+    assert act_a2.status_code == 201
+    assert act_a2.json()["title"] == "Group Seminar on Ethics in AI"
+
+    # Test 7: Teacher A cannot attach activity to Teacher B's room (403)
+    hack_room_res = client.post("/api/v1/activities", json={
+        "title": "Hacked Activity in Room B",
+        "room_id": room_b_id
+    }, headers=t_a_headers)
+    assert hack_room_res.status_code == 403
+
+    # Test 8: Teacher B does NOT see Teacher A's activities (strict isolation)
+    t_b_acts = client.get("/api/v1/activities", headers=t_b_headers)
+    assert t_b_acts.status_code == 200
+    assert len(t_b_acts.json()) == 0  # Teacher B still has 0 activities
+
+    # Test 9: Teacher A sees their 2 activities
+    t_a_acts_after = client.get("/api/v1/activities", headers=t_a_headers)
+    assert t_a_acts_after.status_code == 200
+    assert len(t_a_acts_after.json()) == 2
+
+    # Test 10: Teacher B cannot modify Teacher A's activity (403)
+    hack_edit = client.put(f"/api/v1/activities/{act_a1_id}", json={
+        "title": "Maliciously Modified Title"
+    }, headers=t_b_headers)
+    assert hack_edit.status_code == 403
+
+    # Test 11: Teacher B cannot delete Teacher A's activity (403)
+    hack_del = client.delete(f"/api/v1/activities/{act_a1_id}", headers=t_b_headers)
+    assert hack_del.status_code == 403
+
+    # Test 12: Teacher A updates their own activity
+    valid_edit = client.put(f"/api/v1/activities/{act_a1_id}", json={
+        "title": "Unit 1 Assignment: Advanced Backprop & SGD",
+        "max_marks": 30.0
+    }, headers=t_a_headers)
+    assert valid_edit.status_code == 200
+    assert valid_edit.json()["title"] == "Unit 1 Assignment: Advanced Backprop & SGD"
+    assert valid_edit.json()["max_marks"] == 30.0
+
+    # Test 13: Legacy activity endpoints work and assign teacher ownership
+    leg_res = client.post("/api/v1/activities/generic", json={
+        "title": "Legacy Quiz 1",
+        "date": "15/09/2026",
+        "remarks": "Great participation"
+    }, headers=t_a_headers)
+    assert leg_res.status_code == 200
+    assert leg_res.json()["title"] == "Legacy Quiz 1"
+
+    # Test 14: Teacher A deletes their own activity
+    del_res = client.delete(f"/api/v1/activities/{act_a1_id}", headers=t_a_headers)
+    assert del_res.status_code == 200
+    assert del_res.json()["message"] == "Activity deleted successfully"

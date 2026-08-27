@@ -1,12 +1,11 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { 
-  Users, Mic, FileText, Lightbulb, Star, AlertTriangle, TrendingUp, ChevronRight, BookOpen, Plus 
+  Users, Sparkles, FileText, BookOpen, Plus, Calendar, Award, ChevronRight, CheckCircle2, Clock
 } from 'lucide-react';
 import { HeaderCard } from '../components/layout/HeaderCard';
-import { MetricCard } from '../components/dashboard/MetricCard';
-import { QuickActionsGrid } from '../components/dashboard/QuickActionsGrid';
 import { CreateRoomModal } from '../components/forms/CreateRoomModal';
-import type { DashboardSummary, AttentionStudent, ClassInsights, Room } from '../types';
+import { AddActivityModal } from '../components/forms/AddActivityModal';
+import type { DashboardSummary, AttentionStudent, ClassInsights, Room, Activity } from '../types';
 import { api } from '../services/api';
 
 interface DashboardProps {
@@ -29,23 +28,21 @@ export const Dashboard: React.FC<DashboardProps> = ({
   collegeName,
 }) => {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
-  const [attentionList, setAttentionList] = useState<AttentionStudent[]>([]);
-  const [insights, setInsights] = useState<ClassInsights | null>(null);
+  const [activities, setActivities] = useState<Activity[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [isCreateRoomOpen, setIsCreateRoomOpen] = useState(false);
+  const [isAddActivityOpen, setIsAddActivityOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const loadData = async () => {
     try {
-      const [sumRes, attRes, insRes, roomsRes] = await Promise.all([
-        api.getDashboardSummary(),
-        api.getAttentionStudents(),
-        api.getClassInsights(),
+      const [sumRes, actRes, roomsRes] = await Promise.all([
+        api.getDashboardSummary().catch(() => null),
+        api.getActivities().catch(() => []),
         api.getRooms().catch(() => []),
       ]);
       setSummary(sumRes);
-      setAttentionList(attRes);
-      setInsights(insRes);
+      setActivities(actRes);
       setRooms(roomsRes);
     } catch (err) {
       console.error('Error loading dashboard:', err);
@@ -58,9 +55,26 @@ export const Dashboard: React.FC<DashboardProps> = ({
     loadData();
   }, []);
 
+  const getActivityTypeBadge = (type: string) => {
+    const t = type?.toUpperCase() || 'ACTIVITY';
+    switch (t) {
+      case 'ASSIGNMENT':
+        return 'bg-amber-50 text-amber-700 border-amber-200';
+      case 'SEMINAR':
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      case 'PROJECT':
+      case 'PBL':
+        return 'bg-sky-50 text-sky-700 border-sky-200';
+      case 'ASSESSMENT':
+        return 'bg-purple-50 text-purple-700 border-purple-200';
+      default:
+        return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+    }
+  };
+
   if (loading) {
     return (
-      <div className="bg-slate-50 min-h-screen p-8 flex flex-col items-center justify-center text-slate-500">
+      <div className="bg-slate-50 min-h-[60vh] p-8 flex flex-col items-center justify-center text-slate-500">
         <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-3"></div>
         <p className="text-xs font-bold text-indigo-700">Loading Guru Yuktha Overview...</p>
       </div>
@@ -68,14 +82,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
   }
 
   return (
-    <div className="pb-10 space-y-6">
+    <div className="pb-12 space-y-6">
       {/* Top Header Card */}
       <HeaderCard
-        teacherName={teacherName || summary?.teacher_name}
-        designation={designation || summary?.designation}
-        collegeName={collegeName || summary?.college_name}
+        teacherName={teacherName || summary?.teacher_name || 'Faculty Member'}
+        designation={designation || summary?.designation || 'Faculty'}
+        collegeName={collegeName || summary?.college_name || 'Academic Institution'}
         avatarUrl={avatarUrl}
-        unreadCount={summary?.unread_notifications_count || 3}
+        unreadCount={summary?.unread_notifications_count || 0}
         onOpenProfile={onOpenProfile}
       />
 
@@ -83,85 +97,123 @@ export const Dashboard: React.FC<DashboardProps> = ({
         {/* Title Bar */}
         <div className="flex items-center justify-between px-1">
           <div>
-            <h2 className="text-lg md:text-xl font-extrabold text-slate-900">Dashboard Overview</h2>
-            <p className="text-xs text-slate-500 font-medium">Class activity status and academic monitoring</p>
+            <h2 className="text-lg md:text-xl font-extrabold text-slate-900">Academic Workspace</h2>
+            <p className="text-xs text-slate-500 font-medium">Manage learning activities, assignments, and tracked rooms</p>
           </div>
           <span className="text-xs font-bold text-slate-500 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-xs">
-            {summary?.date_str || 'Today, 13 May 2025'}
+            {summary?.date_str || `Today, ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`}
           </span>
         </div>
 
-        {/* 6 Metric Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
-          <MetricCard
-            title="Total Students"
-            count={summary?.total_students || 48}
-            statusLabel="View all"
-            icon={Users}
-            bgColor="bg-purple-100/70"
-            iconBgColor="bg-purple-600"
-            onClick={() => onOpenAction('students')}
-          />
-          <MetricCard
-            title="Seminars"
-            count={`${summary?.seminars_completed || 32} / ${summary?.seminars_total || 48}`}
-            statusLabel="Completed"
-            icon={Mic}
-            bgColor="bg-emerald-100/70"
-            iconBgColor="bg-emerald-600"
-            onClick={() => onOpenAction('seminar')}
-          />
-          <MetricCard
-            title="Assignments"
-            count={`${summary?.assignments_completed || 38} / ${summary?.assignments_total || 48}`}
-            statusLabel="Completed"
-            icon={FileText}
-            bgColor="bg-amber-100/70"
-            iconBgColor="bg-amber-600"
-            onClick={() => onOpenAction('assignment')}
-          />
-          <MetricCard
-            title="PBL Projects"
-            count={`${summary?.pbl_completed || 25} / ${summary?.pbl_total || 48}`}
-            statusLabel="In Progress"
-            icon={Lightbulb}
-            bgColor="bg-sky-100/70"
-            iconBgColor="bg-sky-600"
-            onClick={() => onOpenAction('pbl')}
-          />
-          <MetricCard
-            title="PGL Activities"
-            count={`${summary?.pgl_completed || 30} / ${summary?.pgl_total || 48}`}
-            statusLabel="Completed"
-            icon={Users}
-            bgColor="bg-rose-100/70"
-            iconBgColor="bg-rose-600"
-            onClick={() => onOpenAction('pgl')}
-          />
-          <MetricCard
-            title="Other Activities"
-            count={`${summary?.other_completed || 22} / ${summary?.other_total || 48}`}
-            statusLabel="Completed"
-            icon={Star}
-            bgColor="bg-indigo-100/70"
-            iconBgColor="bg-indigo-600"
-            onClick={() => onOpenAction('activity')}
-          />
-        </div>
-
-        {/* Quick Actions Grid */}
-        <QuickActionsGrid onOpenAction={onOpenAction} />
-
-        {/* My Learning Rooms (Phase 2) */}
-        <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100 space-y-4">
+        {/* Real Teacher Activities Section (Phase 4) */}
+        <div className="bg-white p-6 rounded-3xl shadow-xs border border-slate-100 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2.5">
-              <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
-                <BookOpen className="w-4 h-4" />
+              <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-800">Academic Activities</h3>
+                <p className="text-xs text-slate-500 font-medium">Assignments, seminars, projects, and assessments</p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setIsAddActivityOpen(true)}
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center space-x-1.5 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Activity</span>
+            </button>
+          </div>
+
+          {activities.length === 0 ? (
+            <div className="py-10 px-4 bg-slate-50 rounded-2xl border border-slate-100 text-center space-y-3 max-w-lg mx-auto">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-100/60 text-indigo-600 flex items-center justify-center mx-auto">
+                <FileText className="w-6 h-6" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-slate-800">No activities yet</h4>
+                <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto leading-relaxed">
+                  Create assignments, seminars, projects, or assessments to track student learning and progress.
+                </p>
+              </div>
+              <button
+                onClick={() => setIsAddActivityOpen(true)}
+                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-md inline-flex items-center space-x-1.5 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Create Your First Activity</span>
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+              {activities.map((act) => (
+                <div
+                  key={act.id}
+                  className="p-5 rounded-2xl border border-slate-100 bg-slate-50/50 hover:bg-white hover:border-indigo-200 transition-all space-y-3 flex flex-col justify-between"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-extrabold uppercase tracking-wider border ${getActivityTypeBadge(act.type)}`}>
+                        {act.type}
+                      </span>
+                      {act.status === 'COMPLETED' ? (
+                        <span className="flex items-center space-x-1 text-[11px] text-emerald-600 font-bold">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Completed</span>
+                        </span>
+                      ) : (
+                        <span className="flex items-center space-x-1 text-[11px] text-amber-600 font-bold">
+                          <Clock className="w-3.5 h-3.5" />
+                          <span>In Progress</span>
+                        </span>
+                      )}
+                    </div>
+
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900 line-clamp-1">{act.title}</h4>
+                      {act.description && (
+                        <p className="text-xs text-slate-500 mt-0.5 line-clamp-2 leading-relaxed">
+                          {act.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 font-medium">
+                    {act.room_name ? (
+                      <span className="inline-flex items-center space-x-1 text-indigo-600 font-semibold truncate max-w-[130px]">
+                        <BookOpen className="w-3 h-3" />
+                        <span className="truncate">{act.room_name}</span>
+                      </span>
+                    ) : (
+                      <span>General</span>
+                    )}
+
+                    {act.due_date && (
+                      <span className="flex items-center space-x-1">
+                        <Calendar className="w-3 h-3 text-slate-400" />
+                        <span>Due: {act.due_date}</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* My Learning Rooms (Phase 2) */}
+        <div className="bg-white p-6 rounded-3xl shadow-xs border border-slate-100 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2.5">
+              <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                <BookOpen className="w-5 h-5" />
               </div>
               <div>
                 <h3 className="text-base font-bold text-slate-800">My Learning Rooms</h3>
-                <p className="text-xs text-slate-500 font-medium">Structured academic workspaces</p>
+                <p className="text-xs text-slate-500 font-medium">Structured academic spaces and tracked learners</p>
               </div>
             </div>
 
@@ -183,12 +235,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
 
           {rooms.length === 0 ? (
-            <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 text-center space-y-2">
-              <p className="text-xs font-semibold text-slate-600">No rooms yet.</p>
-              <p className="text-[11px] text-slate-500">Create your first learning room to establish your learning and collaboration space.</p>
+            <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 text-center space-y-2 max-w-lg mx-auto">
+              <p className="text-xs font-semibold text-slate-700">No rooms yet.</p>
+              <p className="text-[11px] text-slate-500 max-w-sm mx-auto">
+                Create learning rooms to organize your folders, materials, and tracked students.
+              </p>
               <button
                 onClick={() => setIsCreateRoomOpen(true)}
-                className="mt-2 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all inline-flex items-center space-x-1 cursor-pointer"
+                className="mt-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all inline-flex items-center space-x-1 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Create Room</span>
@@ -216,107 +270,20 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
           )}
         </div>
-
-        {/* Create Room Modal */}
-        <CreateRoomModal
-          isOpen={isCreateRoomOpen}
-          onClose={() => setIsCreateRoomOpen(false)}
-          onSuccess={loadData}
-        />
-
-        {/* 2-Column Grid on Desktop */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Students Needing Attention */}
-          <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center">
-                    <AlertTriangle className="w-4 h-4" />
-                  </div>
-                  <h3 className="text-base font-bold text-slate-800">Students Needing Attention</h3>
-                </div>
-                <span className="text-xs font-bold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-full">
-                  {attentionList.length} Flagged
-                </span>
-              </div>
-
-              <div className="space-y-2.5">
-                {attentionList.map((st) => (
-                  <div
-                    key={st.id}
-                    onClick={() => onSelectStudent(st.id)}
-                    className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 hover:bg-indigo-50/50 border border-slate-100 hover:border-indigo-200 transition-all cursor-pointer group"
-                  >
-                    <div className="flex items-center space-x-3.5">
-                      <div className={`w-10 h-10 rounded-full ${st.avatar_color} font-bold text-xs flex items-center justify-center shadow-xs`}>
-                        {st.avatar_initials}
-                      </div>
-                      <div>
-                        <h4 className="text-xs md:text-sm font-bold text-slate-800 group-hover:text-indigo-700 transition-colors">
-                          {st.name}
-                        </h4>
-                        <p className="text-[11px] text-slate-500 font-medium">
-                          Roll: {st.roll_number} • {st.pending_reason}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
-                        st.status === 'CRITICAL' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
-                      }`}>
-                        {st.progress_percentage}%
-                      </span>
-                      <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 transition-colors" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Class Progress Insights */}
-          <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
-                    <TrendingUp className="w-4 h-4" />
-                  </div>
-                  <h3 className="text-base font-bold text-slate-800">Class Progress Insights</h3>
-                </div>
-                <span className="text-sm font-extrabold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">
-                  {insights?.overall_progress || 76}% Overall
-                </span>
-              </div>
-
-              <div className="space-y-4">
-                {[
-                  { label: 'Attendance Rate', pct: insights?.attendance_rate || 82, color: 'bg-emerald-500' },
-                  { label: 'Assignments Submitted', pct: insights?.assignments_rate || 84, color: 'bg-amber-500' },
-                  { label: 'Seminars Completed', pct: insights?.seminars_rate || 71, color: 'bg-purple-500' },
-                  { label: 'PBL Projects Active', pct: insights?.pbl_rate || 62, color: 'bg-sky-500' },
-                  { label: 'PGL Participation', pct: insights?.pgl_rate || 79, color: 'bg-rose-500' },
-                ].map((item) => (
-                  <div key={item.label}>
-                    <div className="flex justify-between text-xs font-bold text-slate-700 mb-1.5">
-                      <span>{item.label}</span>
-                      <span>{item.pct}%</span>
-                    </div>
-                    <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full ${item.color} rounded-full transition-all duration-500`}
-                        style={{ width: `${item.pct}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
+
+      {/* Modals */}
+      <CreateRoomModal
+        isOpen={isCreateRoomOpen}
+        onClose={() => setIsCreateRoomOpen(false)}
+        onSuccess={loadData}
+      />
+
+      <AddActivityModal
+        isOpen={isAddActivityOpen}
+        onClose={() => setIsAddActivityOpen(false)}
+        onSuccess={loadData}
+      />
     </div>
   );
 };

@@ -146,9 +146,11 @@ export interface PglDetail {
 
 export interface Activity {
   id: number;
-  student_id: number;
+  teacher_id?: number;
+  room_id?: number;
+  student_id?: number;
   class_id?: number;
-  type: ActivityType;
+  type: string;
   title: string;
   description?: string;
   status: ActivityStatus;
@@ -156,6 +158,8 @@ export interface Activity {
   max_marks?: number;
   remarks?: string;
   due_date?: string;
+  room_name?: string;
+  room_code?: string;
   created_at: string;
   seminar_detail?: SeminarDetail;
   assignment_detail?: AssignmentDetail;
