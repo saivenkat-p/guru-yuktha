@@ -43,6 +43,33 @@ export interface AuthMeResponse {
   college_name?: string;
 }
 
+export interface Room {
+  id: number;
+  teacher_id: number;
+  name: string;
+  description?: string;
+  code: string;
+  visibility: 'PRIVATE' | 'PUBLIC';
+  is_active: boolean;
+  active_members_count: number;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface RoomMembership {
+  id: number;
+  room_id: number;
+  user_id: number;
+  learner_id?: number;
+  role: string;
+  status: 'ACTIVE' | 'PENDING' | 'REJECTED' | 'REMOVED' | 'ARCHIVED';
+  joined_at: string;
+  created_at: string;
+  room?: Room;
+  user?: User;
+  learner?: LearnerProfile;
+}
+
 export type ActivityType = 'SEMINAR' | 'ASSIGNMENT' | 'PBL' | 'PGL' | 'OTHER' | 'ASSESSMENT';
 export type ActivityStatus = 'PENDING' | 'IN_PROGRESS' | 'SUBMITTED' | 'COMPLETED' | 'LATE' | 'REJECTED';
 export type StudentStatus = 'GOOD' | 'NEEDS_ATTENTION' | 'CRITICAL';

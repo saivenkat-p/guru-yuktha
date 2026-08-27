@@ -105,6 +105,54 @@ class LearnerProfileUpdate(BaseModel):
     email: Optional[str] = None
     avatar_url: Optional[str] = None
 
+# Room & Membership Schemas (Phase 2)
+class RoomCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    visibility: Optional[str] = "PRIVATE" # PRIVATE or PUBLIC
+
+class RoomUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    visibility: Optional[str] = None
+    is_active: Optional[bool] = None
+
+class RoomOut(BaseModel):
+    id: int
+    teacher_id: int
+    name: str
+    description: Optional[str] = None
+    code: str
+    visibility: str = "PRIVATE"
+    is_active: bool = True
+    active_members_count: int = 0
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+class RoomMembershipCreate(BaseModel):
+    user_id: Optional[int] = None
+    learner_id: Optional[int] = None
+    role: Optional[str] = "MEMBER"
+
+class RoomMembershipOut(BaseModel):
+    id: int
+    room_id: int
+    user_id: int
+    learner_id: Optional[int] = None
+    role: str = "MEMBER"
+    status: str = "ACTIVE"
+    joined_at: datetime
+    created_at: datetime
+    user: Optional[UserOut] = None
+    learner: Optional[LearnerOut] = None
+    room: Optional[RoomOut] = None
+
+    class Config:
+        from_attributes = True
+
 # Evidence
 class EvidenceFileOut(BaseModel):
     id: int

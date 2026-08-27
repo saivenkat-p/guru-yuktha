@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { 
-  Users, Mic, FileText, Lightbulb, Star, AlertTriangle, TrendingUp, ChevronRight 
+  Users, Mic, FileText, Lightbulb, Star, AlertTriangle, TrendingUp, ChevronRight, BookOpen, Plus 
 } from 'lucide-react';
 import { HeaderCard } from '../components/layout/HeaderCard';
 import { MetricCard } from '../components/dashboard/MetricCard';
 import { QuickActionsGrid } from '../components/dashboard/QuickActionsGrid';
-import type { DashboardSummary, AttentionStudent, ClassInsights } from '../types';
+import { CreateRoomModal } from '../components/forms/CreateRoomModal';
+import type { DashboardSummary, AttentionStudent, ClassInsights, Room } from '../types';
 import { api } from '../services/api';
 
 interface DashboardProps {
@@ -30,25 +31,30 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [attentionList, setAttentionList] = useState<AttentionStudent[]>([]);
   const [insights, setInsights] = useState<ClassInsights | null>(null);
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [isCreateRoomOpen, setIsCreateRoomOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const [sumRes, attRes, insRes] = await Promise.all([
-          api.getDashboardSummary(),
-          api.getAttentionStudents(),
-          api.getClassInsights(),
-        ]);
-        setSummary(sumRes);
-        setAttentionList(attRes);
-        setInsights(insRes);
-      } catch (err) {
-        console.error('Error loading dashboard:', err);
-      } finally {
-        setLoading(false);
-      }
+  const loadData = async () => {
+    try {
+      const [sumRes, attRes, insRes, roomsRes] = await Promise.all([
+        api.getDashboardSummary(),
+        api.getAttentionStudents(),
+        api.getClassInsights(),
+        api.getRooms().catch(() => []),
+      ]);
+      setSummary(sumRes);
+      setAttentionList(attRes);
+      setInsights(insRes);
+      setRooms(roomsRes);
+    } catch (err) {
+      console.error('Error loading dashboard:', err);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
     loadData();
   }, []);
 
@@ -145,6 +151,78 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
         {/* Quick Actions Grid */}
         <QuickActionsGrid onOpenAction={onOpenAction} />
+
+        {/* My Learning Rooms (Phase 2) */}
+        <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2.5">
+              <div className="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                <BookOpen className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-800">My Learning Rooms</h3>
+                <p className="text-xs text-slate-500 font-medium">Structured academic workspaces</p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setIsCreateRoomOpen(true)}
+                className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center space-x-1 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>New Room</span>
+              </button>
+              <button
+                onClick={() => onOpenAction('rooms')}
+                className="px-3 py-1.5 text-xs font-bold text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors cursor-pointer"
+              >
+                View all
+              </button>
+            </div>
+          </div>
+
+          {rooms.length === 0 ? (
+            <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 text-center space-y-2">
+              <p className="text-xs font-semibold text-slate-600">No rooms yet.</p>
+              <p className="text-[11px] text-slate-500">Create your first learning room to establish your learning and collaboration space.</p>
+              <button
+                onClick={() => setIsCreateRoomOpen(true)}
+                className="mt-2 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all inline-flex items-center space-x-1 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Create Room</span>
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {rooms.slice(0, 3).map((r) => (
+                <div key={r.id} className="p-4 rounded-2xl border border-slate-100 bg-slate-50/50 hover:bg-white hover:border-indigo-200 transition-all space-y-2">
+                  <div className="flex items-start justify-between">
+                    <h4 className="text-xs font-bold text-slate-800 line-clamp-1">{r.name}</h4>
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-indigo-50 text-indigo-700 border border-indigo-100">
+                      {r.code}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium pt-1">
+                    <span className="flex items-center space-x-1">
+                      <Users className="w-3 h-3 text-indigo-500" />
+                      <span>{r.active_members_count} Tracked</span>
+                    </span>
+                    <span className="capitalize text-slate-400">{r.visibility.toLowerCase()}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Create Room Modal */}
+        <CreateRoomModal
+          isOpen={isCreateRoomOpen}
+          onClose={() => setIsCreateRoomOpen(false)}
+          onSuccess={loadData}
+        />
 
         {/* 2-Column Grid on Desktop */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

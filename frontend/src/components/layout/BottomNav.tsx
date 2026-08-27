@@ -2,8 +2,8 @@ import React from 'react';
 import { Home, Users, Plus, BookOpen, BarChart3 } from 'lucide-react';
 
 interface BottomNavProps {
-  activeTab: 'dashboard' | 'students' | 'materials' | 'reports';
-  onSelectTab: (tab: 'dashboard' | 'students' | 'materials' | 'reports') => void;
+  activeTab: 'dashboard' | 'rooms' | 'students' | 'materials' | 'reports';
+  onSelectTab: (tab: 'dashboard' | 'rooms' | 'students' | 'materials' | 'reports') => void;
   onOpenQuickAdd: () => void;
 }
 
@@ -14,8 +14,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
 }) => {
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
+    { id: 'rooms', label: 'Rooms', icon: BookOpen },
     { id: 'students', label: 'Students', icon: Users },
-    { id: 'materials', label: 'Materials', icon: BookOpen },
     { id: 'reports', label: 'Reports', icon: BarChart3 },
   ];
 

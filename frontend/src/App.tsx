@@ -4,6 +4,7 @@ import { Students } from './pages/Students';
 import { StudentProfile } from './pages/StudentProfile';
 import { Materials } from './pages/Materials';
 import { Reports } from './pages/Reports';
+import { Rooms } from './pages/Rooms';
 import { Login } from './pages/Login';
 import { LearnerDashboard } from './pages/LearnerDashboard';
 import { BottomNav } from './components/layout/BottomNav';
@@ -25,7 +26,7 @@ export function App() {
   const [userRole, setUserRole] = useState<UserRole>('TEACHER');
   const [learnerProfile, setLearnerProfile] = useState<LearnerProfile | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'students' | 'materials' | 'reports'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'rooms' | 'students' | 'materials' | 'reports'>('dashboard');
   const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [loadingAuth, setLoadingAuth] = useState(true);
@@ -224,6 +225,8 @@ export function App() {
             collegeName={teacherProfile.collegeName}
           />
         );
+      case 'rooms':
+        return <Rooms />;
       case 'students':
         return (
           <Students

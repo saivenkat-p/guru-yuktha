@@ -1,6 +1,7 @@
-﻿import React from 'react';
-import { GraduationCap, Sparkles, BookOpen, Compass, CheckCircle2, LogOut, User, Building, Shield } from 'lucide-react';
-import type { LearnerProfile, User as UserType } from '../types';
+﻿import React, { useEffect, useState } from 'react';
+import { GraduationCap, Sparkles, BookOpen, Compass, CheckCircle2, LogOut, User, Building, Shield, Lock, Globe } from 'lucide-react';
+import type { LearnerProfile, User as UserType, RoomMembership } from '../types';
+import { api } from '../services/api';
 
 interface LearnerDashboardProps {
   user: UserType;
@@ -13,6 +14,23 @@ export const LearnerDashboard: React.FC<LearnerDashboardProps> = ({
   learnerProfile,
   onLogout,
 }) => {
+  const [memberships, setMemberships] = useState<RoomMembership[]>([]);
+  const [loadingRooms, setLoadingRooms] = useState(true);
+
+  useEffect(() => {
+    async function loadMemberships() {
+      try {
+        const data = await api.getMyMemberships();
+        setMemberships(data);
+      } catch (err) {
+        console.error('Error fetching learner memberships:', err);
+      } finally {
+        setLoadingRooms(false);
+      }
+    }
+    loadMemberships();
+  }, []);
+
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col">
       {/* Top Navbar */}
@@ -56,7 +74,7 @@ export const LearnerDashboard: React.FC<LearnerDashboardProps> = ({
           <div className="relative z-10 max-w-3xl space-y-4">
             <div className="inline-flex items-center space-x-2 px-3 py-1 bg-indigo-500/20 border border-indigo-500/30 rounded-full text-indigo-300 text-xs font-semibold">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Phase 1 Authentication Activated</span>
+              <span>Learner Platform Identity Active</span>
             </div>
             <h1 className="text-2xl md:text-4xl font-extrabold text-white tracking-tight">
               Welcome to Guru Yuktha, {user.full_name}
@@ -135,17 +153,69 @@ export const LearnerDashboard: React.FC<LearnerDashboardProps> = ({
           </div>
         </div>
 
+        {/* My Learning Rooms Section (Phase 2) */}
+        <div className="bg-slate-800/40 border border-slate-800 rounded-3xl p-6 md:p-8 space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-9 h-9 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
+                <BookOpen className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">My Learning Rooms</h3>
+                <p className="text-xs text-slate-400">Your active room memberships</p>
+              </div>
+            </div>
+            <span className="px-3 py-1 bg-slate-700/40 text-slate-300 text-xs font-semibold rounded-lg border border-slate-700/50">
+              {memberships.length} {memberships.length === 1 ? 'Room' : 'Rooms'}
+            </span>
+          </div>
+
+          {loadingRooms ? (
+            <div className="p-8 text-center text-xs text-slate-400">
+              <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+              Loading your rooms...
+            </div>
+          ) : memberships.length === 0 ? (
+            <div className="p-8 rounded-2xl bg-slate-900/60 border border-slate-800 text-center space-y-2">
+              <p className="text-xs font-bold text-slate-300">No learning rooms yet.</p>
+              <p className="text-[11px] text-slate-400 max-w-md mx-auto">
+                You are not currently enrolled or tracked in any learning rooms. Once teachers invite you with your Learner ID or you join public rooms, they will appear here.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {memberships.map((m) => (
+                <div key={m.id} className="p-5 bg-slate-900/60 border border-slate-800 rounded-2xl space-y-3">
+                  <div className="flex items-start justify-between">
+                    <h4 className="font-bold text-sm text-white">{m.room?.name || 'Room'}</h4>
+                    <span className="px-2 py-0.5 bg-indigo-500/20 text-indigo-300 font-mono text-[10px] rounded-md font-bold">
+                      {m.room?.code}
+                    </span>
+                  </div>
+                  {m.room?.description && (
+                    <p className="text-xs text-slate-400 line-clamp-2">{m.room.description}</p>
+                  )}
+                  <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+                    <span>Role: {m.role}</span>
+                    <span className="text-emerald-400 font-semibold">{m.status}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Phase Roadmap Preview */}
         <div className="bg-slate-800/40 border border-slate-800 rounded-3xl p-6 md:p-8 space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-base font-bold text-white">Upcoming Learning Features</h3>
+              <h3 className="text-base font-bold text-white">Platform Development Roadmap</h3>
               <p className="text-xs text-slate-400 mt-0.5">
                 Guru Yuktha is rolling out in structured phases as per the product blueprint.
               </p>
             </div>
             <span className="px-3 py-1 bg-slate-700/50 text-slate-300 text-xs font-bold rounded-lg border border-slate-600/50">
-              Phase 1 Completed
+              Phase 2 Active
             </span>
           </div>
 

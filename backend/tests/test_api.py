@@ -278,3 +278,191 @@ def test_reports_endpoints():
     assert csv_res.status_code == 200
     assert "text/csv" in csv_res.headers["content-type"]
     assert "GuruYuktha_Export" in csv_res.headers["content-disposition"]
+
+# =======================================================
+# PHASE 2: ROOM CREATION + ROOM MEMBERSHIP TEST SUITE
+# =======================================================
+
+def test_room_creation_and_authorization():
+    # 1. Teacher setup
+    t_login = client.post("/api/v1/auth/login", json={"email": "teacher@guruyuktha.edu", "password": "teacher123"})
+    t_token = t_login.json()["access_token"]
+    t_headers = {"Authorization": f"Bearer {t_token}"}
+
+    # 2. Learner setup
+    l_login = client.post("/api/v1/auth/login", json={"email": "learner.rahul@student.edu", "password": "learnerpassword123"})
+    l_token = l_login.json()["access_token"]
+    l_headers = {"Authorization": f"Bearer {l_token}"}
+
+    # Test 1: Teacher can create room
+    room_payload = {
+        "name": "Advanced British Literature",
+        "description": "Exploration of 19th and 20th century poetry and drama.",
+        "visibility": "PRIVATE"
+    }
+    create_res = client.post("/api/v1/rooms", json=room_payload, headers=t_headers)
+    assert create_res.status_code == 201
+    room_data = create_res.json()
+    assert room_data["name"] == "Advanced British Literature"
+    assert room_data["code"].startswith("ADV-") or "-" in room_data["code"]
+    assert room_data["visibility"] == "PRIVATE"
+    assert room_data["is_active"] is True
+    assert room_data["active_members_count"] == 0
+    room_id = room_data["id"]
+
+    # Test 2: Learner cannot create room
+    l_create_res = client.post("/api/v1/rooms", json={"name": "Hacked Room"}, headers=l_headers)
+    assert l_create_res.status_code == 403
+
+    # Test 3: Unauthenticated user cannot create room
+    anon_res = client.post("/api/v1/rooms", json={"name": "Anon Room"})
+    assert anon_res.status_code == 401
+
+    # Test 4: Teacher can view own rooms list
+    rooms_list = client.get("/api/v1/rooms", headers=t_headers)
+    assert rooms_list.status_code == 200
+    assert any(r["id"] == room_id for r in rooms_list.json())
+
+    # Test 5: Teacher can view own room details
+    room_det = client.get(f"/api/v1/rooms/{room_id}", headers=t_headers)
+    assert room_det.status_code == 200
+    assert room_det.json()["id"] == room_id
+
+    # Test 6: Private room blocks unassociated learner
+    l_view_res = client.get(f"/api/v1/rooms/{room_id}", headers=l_headers)
+    assert l_view_res.status_code == 403
+
+    # Test 7: Learner cannot modify teacher's room
+    l_update_res = client.put(f"/api/v1/rooms/{room_id}", json={"name": "Tampered Name"}, headers=l_headers)
+    assert l_update_res.status_code == 403
+
+    # Test 8: Teacher 2 cannot modify Teacher 1's room
+    # Register teacher 2
+    t2_signup = client.post("/api/v1/auth/signup", json={
+        "email": "teacher2.math@guruyuktha.edu",
+        "password": "passWord123!",
+        "full_name": "Prof. Srinivasa Ramanujan",
+        "role": "TEACHER",
+        "department": "Mathematics",
+        "designation": "Professor",
+        "college_name": "GDC"
+    })
+    t2_token = t2_signup.json()["access_token"]
+    t2_headers = {"Authorization": f"Bearer {t2_token}"}
+
+    t2_update_res = client.put(f"/api/v1/rooms/{room_id}", json={"name": "Stolen Room"}, headers=t2_headers)
+    assert t2_update_res.status_code == 403
+    assert "You do not own this room" in t2_update_res.json()["detail"]
+
+    # Test 9: Owning teacher CAN update room
+    update_res = client.put(f"/api/v1/rooms/{room_id}", json={"name": "British Literature & Drama"}, headers=t_headers)
+    assert update_res.status_code == 200
+    assert update_res.json()["name"] == "British Literature & Drama"
+
+def test_room_membership_and_isolation():
+    from app.models.models import Room, RoomMembership, User, Learner
+
+    db = TestingSessionLocal()
+    try:
+        # Get users
+        t1_user = db.query(User).filter(User.email == "teacher@guruyuktha.edu").first()
+        t2_user = db.query(User).filter(User.email == "teacher2.math@guruyuktha.edu").first()
+        learner_user = db.query(User).filter(User.email == "learner.rahul@student.edu").first()
+        learner_profile = db.query(Learner).filter(Learner.user_id == learner_user.id).first()
+
+        # Create Room 1 (Teacher 1)
+        r1 = Room(
+            teacher_id=t1_user.teacher_profile.id,
+            name="English Honours 2026",
+            code="ENG-HON-2026",
+            visibility="PRIVATE",
+            is_active=True
+        )
+        # Create Room 2 (Teacher 2)
+        r2 = Room(
+            teacher_id=t2_user.teacher_profile.id,
+            name="Real Analysis 2026",
+            code="MATH-REAL-2026",
+            visibility="PUBLIC",
+            is_active=True
+        )
+        db.add_all([r1, r2])
+        db.commit()
+        db.refresh(r1)
+        db.refresh(r2)
+
+        # Associate Learner with Room 1 and Room 2 (Learner can belong to multiple rooms)
+        m1 = RoomMembership(
+            room_id=r1.id,
+            user_id=learner_user.id,
+            learner_id=learner_profile.id if learner_profile else None,
+            role="MEMBER",
+            status="ACTIVE"
+        )
+        m2 = RoomMembership(
+            room_id=r2.id,
+            user_id=learner_user.id,
+            learner_id=learner_profile.id if learner_profile else None,
+            role="MEMBER",
+            status="ACTIVE"
+        )
+        db.add_all([m1, m2])
+        db.commit()
+
+        # Login tokens
+        t1_token = client.post("/api/v1/auth/login", json={"email": "teacher@guruyuktha.edu", "password": "teacher123"}).json()["access_token"]
+        t2_token = client.post("/api/v1/auth/login", json={"email": "teacher2.math@guruyuktha.edu", "password": "passWord123!"}).json()["access_token"]
+        l_token = client.post("/api/v1/auth/login", json={"email": "learner.rahul@student.edu", "password": "learnerpassword123"}).json()["access_token"]
+
+        t1_headers = {"Authorization": f"Bearer {t1_token}"}
+        t2_headers = {"Authorization": f"Bearer {t2_token}"}
+        l_headers = {"Authorization": f"Bearer {l_token}"}
+
+        # Test 10: Teacher 1 can see members of Room 1
+        m_res1 = client.get(f"/api/v1/rooms/{r1.id}/members", headers=t1_headers)
+        assert m_res1.status_code == 200
+        assert len(m_res1.json()) == 1
+
+        # Test 11: Teacher 2 cannot view members of Teacher 1's Room
+        m_res2 = client.get(f"/api/v1/rooms/{r1.id}/members", headers=t2_headers)
+        assert m_res2.status_code == 403
+
+        # Test 12: Learner can view their own memberships across multiple rooms
+        l_memberships = client.get("/api/v1/rooms/my/memberships", headers=l_headers)
+        assert l_memberships.status_code == 200
+        membership_room_ids = [m["room_id"] for m in l_memberships.json()]
+        assert r1.id in membership_room_ids
+        assert r2.id in membership_room_ids
+
+        # Test 13: Public room is viewable by any authenticated user without creating membership
+        # Register a 2nd learner who has NO membership
+        l2_signup = client.post("/api/v1/auth/signup", json={
+            "email": "learner2.untracked@student.edu",
+            "password": "LearnerPass123!",
+            "full_name": "Untracked Student",
+            "role": "LEARNER"
+        })
+        l2_token = l2_signup.json()["access_token"]
+        l2_headers = {"Authorization": f"Bearer {l2_token}"}
+
+        # Public room r2 viewable by l2
+        public_view = client.get(f"/api/v1/rooms/{r2.id}", headers=l2_headers)
+        assert public_view.status_code == 200
+        assert public_view.json()["visibility"] == "PUBLIC"
+
+        # Check that viewing public room did NOT automatically create membership for l2
+        l2_memberships = client.get("/api/v1/rooms/my/memberships", headers=l2_headers)
+        assert l2_memberships.status_code == 200
+        assert len(l2_memberships.json()) == 0  # Zero memberships created
+
+        # Test 14: Teacher can archive room (soft deactivate)
+        arch_res = client.delete(f"/api/v1/rooms/{r1.id}", headers=t1_headers)
+        assert arch_res.status_code == 200
+        assert arch_res.json()["message"] == "Room archived successfully"
+
+        # Archived room is no longer in active rooms list
+        active_rooms = client.get("/api/v1/rooms", headers=t1_headers).json()
+        assert not any(r["id"] == r1.id for r in active_rooms)
+
+    finally:
+        db.close()

@@ -1,6 +1,6 @@
 import type { 
   DashboardSummary, AttentionStudent, ClassInsights, Student, StudentProfile, 
-  Activity, Material 
+  Activity, Material, Room, RoomMembership 
 } from '../types';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api/v1';
@@ -73,6 +73,23 @@ export const api = {
     method: 'POST',
     body: formData,
   }),
+
+  // Rooms (Phase 2)
+  getRooms: () => fetchApi<Room[]>('/rooms'),
+  createRoom: (data: { name: string; description?: string; visibility?: string }) => fetchApi<Room>('/rooms', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  getRoomDetails: (id: number) => fetchApi<Room>(`/rooms/${id}`),
+  updateRoom: (id: number, data: Partial<Room>) => fetchApi<Room>(`/rooms/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+  archiveRoom: (id: number) => fetchApi<{ message: string; id: number }>(`/rooms/${id}`, {
+    method: 'DELETE',
+  }),
+  getRoomMembers: (id: number) => fetchApi<RoomMembership[]>(`/rooms/${id}/members`),
+  getMyMemberships: () => fetchApi<RoomMembership[]>('/rooms/my/memberships'),
 
   // Dashboard
   getDashboardSummary: () => fetchApi<DashboardSummary>('/dashboard/summary'),

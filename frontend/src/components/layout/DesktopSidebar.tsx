@@ -1,12 +1,12 @@
 import React from 'react';
-import { Home, Users, BookOpen, BarChart3, Plus, GraduationCap, Bell, User } from 'lucide-react';
+import { Home, Users, BookOpen, BarChart3, Plus, GraduationCap, FileText, User } from 'lucide-react';
 
 interface DesktopSidebarProps {
-  activeTab: 'dashboard' | 'students' | 'materials' | 'reports';
+  activeTab: 'dashboard' | 'rooms' | 'students' | 'materials' | 'reports';
   teacherName?: string;
   designation?: string;
   avatarUrl?: string;
-  onSelectTab: (tab: 'dashboard' | 'students' | 'materials' | 'reports') => void;
+  onSelectTab: (tab: 'dashboard' | 'rooms' | 'students' | 'materials' | 'reports') => void;
   onOpenQuickAdd: () => void;
   onOpenProfile?: () => void;
 }
@@ -22,8 +22,9 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
 }) => {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
-    { id: 'students', label: 'Students', icon: Users },
-    { id: 'materials', label: 'Materials', icon: BookOpen },
+    { id: 'rooms', label: 'My Rooms', icon: BookOpen },
+    { id: 'students', label: 'Tracked Students', icon: Users },
+    { id: 'materials', label: 'Materials', icon: FileText },
     { id: 'reports', label: 'Reports', icon: BarChart3 },
   ];
 

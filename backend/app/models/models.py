@@ -72,6 +72,7 @@ class User(Base):
 
     teacher_profile = relationship("Teacher", back_populates="user", uselist=False)
     learner_profile = relationship("Learner", back_populates="user", uselist=False)
+    room_memberships = relationship("RoomMembership", back_populates="user", cascade="all, delete-orphan")
 
 # Teacher model
 class Teacher(Base):
@@ -86,6 +87,7 @@ class Teacher(Base):
 
     user = relationship("User", back_populates="teacher_profile")
     classes = relationship("Class", back_populates="teacher")
+    rooms = relationship("Room", back_populates="owner", cascade="all, delete-orphan")
 
 # Learner model (for independently registered learners)
 class Learner(Base):
@@ -103,6 +105,42 @@ class Learner(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="learner_profile")
+    memberships = relationship("RoomMembership", back_populates="learner", cascade="all, delete-orphan")
+
+# Dedicated Next-Gen Room Model
+class Room(Base):
+    __tablename__ = "rooms"
+
+    id = Column(Integer, primary_key=True, index=True)
+    teacher_id = Column(Integer, ForeignKey("teachers.id"), nullable=False, index=True)
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    code = Column(String(50), unique=True, index=True, nullable=False)
+    visibility = Column(String(50), default="PRIVATE")  # PRIVATE, PUBLIC
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    owner = relationship("Teacher", back_populates="rooms")
+    memberships = relationship("RoomMembership", back_populates="room", cascade="all, delete-orphan")
+
+# Dedicated Room Membership Model
+class RoomMembership(Base):
+    __tablename__ = "room_memberships"
+
+    id = Column(Integer, primary_key=True, index=True)
+    room_id = Column(Integer, ForeignKey("rooms.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    learner_id = Column(Integer, ForeignKey("learners.id"), nullable=True, index=True)
+    role = Column(String(50), default="MEMBER")
+    status = Column(String(50), default="ACTIVE")  # ACTIVE, PENDING, REJECTED, REMOVED, ARCHIVED
+    joined_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    room = relationship("Room", back_populates="memberships")
+    user = relationship("User", back_populates="room_memberships")
+    learner = relationship("Learner", back_populates="memberships")
 
 # Class model
 class Class(Base):
