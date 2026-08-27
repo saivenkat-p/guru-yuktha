@@ -27,12 +27,12 @@ export function App() {
 
   // Teacher Profile state
   const [teacherProfile, setTeacherProfile] = useState({
-    name: 'Md. Shahazadi Begum',
-    designation: 'Lecturer in English',
-    department: 'English',
-    collegeName: 'GDC Ramachandrapuram',
-    employeeCode: 'EMP-2024-ENG',
-    email: 'teacher@guruyuktha.edu',
+    name: 'Faculty',
+    designation: 'Faculty Member',
+    department: 'Department',
+    collegeName: 'Institution',
+    employeeCode: '',
+    email: '',
     avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
   });
 

@@ -12,16 +12,16 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
   const [error, setError] = useState<string | null>(null);
 
   // Sign In Form
-  const [signInEmail, setSignInEmail] = useState('teacher@guruyuktha.edu');
-  const [signInPassword, setSignInPassword] = useState('teacher123');
+  const [signInEmail, setSignInEmail] = useState('');
+  const [signInPassword, setSignInPassword] = useState('');
 
   // Sign Up Form
   const [signUpFullName, setSignUpFullName] = useState('');
   const [signUpEmail, setSignUpEmail] = useState('');
   const [signUpPassword, setSignUpPassword] = useState('');
-  const [signUpDepartment, setSignUpDepartment] = useState('English');
-  const [signUpDesignation, setSignUpDesignation] = useState('Lecturer in English');
-  const [signUpCollege, setSignUpCollege] = useState('GDC Ramachandrapuram');
+  const [signUpDepartment, setSignUpDepartment] = useState('');
+  const [signUpDesignation, setSignUpDesignation] = useState('');
+  const [signUpCollege, setSignUpCollege] = useState('');
   const [signUpEmpCode, setSignUpEmpCode] = useState('');
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -29,7 +29,7 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
     setError(null);
     setLoading(true);
     try {
-      const res = await api.login({ email: signInEmail, password: signInPassword });
+      const res = await api.login({ email: signInEmail.trim(), password: signInPassword });
       if (res.access_token) {
         setAuthToken(res.access_token);
         onAuthSuccess(res.access_token, res.user);
@@ -49,13 +49,13 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
     setLoading(true);
     try {
       const res = await api.signup({
-        full_name: signUpFullName,
-        email: signUpEmail,
+        full_name: signUpFullName.trim(),
+        email: signUpEmail.trim(),
         password: signUpPassword,
-        department: signUpDepartment,
-        designation: signUpDesignation,
-        college_name: signUpCollege,
-        employee_code: signUpEmpCode || undefined,
+        department: signUpDepartment.trim() || undefined,
+        designation: signUpDesignation.trim() || undefined,
+        college_name: signUpCollege.trim() || undefined,
+        employee_code: signUpEmpCode.trim() || undefined,
       });
       if (res.access_token) {
         setAuthToken(res.access_token);
@@ -66,11 +66,6 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const fillDemoCredentials = () => {
-    setSignInEmail('teacher@guruyuktha.edu');
-    setSignInPassword('teacher123');
   };
 
   return (
@@ -137,16 +132,25 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
                   required
                   value={signInEmail}
                   onChange={(e) => setSignInEmail(e.target.value)}
-                  placeholder="teacher@guruyuktha.edu"
+                  placeholder="faculty@institution.edu"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                Password
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-bold text-slate-700">
+                  Password
+                </label>
+                <button
+                  type="button"
+                  onClick={() => alert('Password reset is managed by your institution administrator or academic IT support.')}
+                  className="text-[11px] text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer"
+                >
+                  Forgot Password?
+                </button>
+              </div>
               <div className="relative">
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                 <input
@@ -154,7 +158,7 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
                   required
                   value={signInPassword}
                   onChange={(e) => setSignInPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder="Enter your password"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
@@ -163,7 +167,7 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl transition-colors shadow-md hover:shadow-lg flex items-center justify-center space-x-2 disabled:opacity-50 mt-2 cursor-pointer"
+              className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl transition-colors shadow-md hover:shadow-lg flex items-center justify-center space-x-2 disabled:opacity-50 mt-4 cursor-pointer"
             >
               {loading ? (
                 <span>Signing In...</span>
@@ -174,16 +178,6 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
                 </>
               )}
             </button>
-
-            <div className="pt-2 text-center">
-              <button
-                type="button"
-                onClick={fillDemoCredentials}
-                className="text-xs text-indigo-600 font-semibold hover:underline cursor-pointer"
-              >
-                Use Demo Teacher Account (teacher@guruyuktha.edu)
-              </button>
-            </div>
           </form>
         ) : (
           /* Sign Up View */
@@ -199,7 +193,7 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
                   required
                   value={signUpFullName}
                   onChange={(e) => setSignUpFullName(e.target.value)}
-                  placeholder="Prof. Md. Shahazadi Begum"
+                  placeholder="e.g. Dr. Rajesh Sharma"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
@@ -216,7 +210,7 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
                   required
                   value={signUpEmail}
                   onChange={(e) => setSignUpEmail(e.target.value)}
-                  placeholder="teacher@college.edu"
+                  placeholder="faculty@institution.edu"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
@@ -251,7 +245,7 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
                     type="text"
                     value={signUpDepartment}
                     onChange={(e) => setSignUpDepartment(e.target.value)}
-                    placeholder="English"
+                    placeholder="e.g. English"
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
@@ -267,7 +261,7 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
                     type="text"
                     value={signUpDesignation}
                     onChange={(e) => setSignUpDesignation(e.target.value)}
-                    placeholder="Lecturer"
+                    placeholder="e.g. Lecturer"
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
@@ -284,7 +278,7 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
                   type="text"
                   value={signUpCollege}
                   onChange={(e) => setSignUpCollege(e.target.value)}
-                  placeholder="GDC Ramachandrapuram"
+                  placeholder="e.g. Government Degree College"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
