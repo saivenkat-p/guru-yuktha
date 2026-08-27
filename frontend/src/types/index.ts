@@ -70,6 +70,37 @@ export interface RoomMembership {
   learner?: LearnerProfile;
 }
 
+export interface Folder {
+  id: number;
+  room_id: number;
+  name: string;
+  description?: string;
+  is_active: boolean;
+  resources_count: number;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface Resource {
+  id: number;
+  room_id: number;
+  folder_id?: number;
+  title: string;
+  description?: string;
+  resource_type: 'PDF' | 'PPT' | 'DOC' | 'VIDEO' | 'LINK' | 'IMAGE' | 'OTHER';
+  file_url?: string;
+  mime_type?: string;
+  file_size?: string;
+  visibility: 'PUBLIC' | 'ROOM_ONLY';
+  is_active: boolean;
+  created_at: string;
+  updated_at?: string;
+  folder_name?: string;
+  room_name?: string;
+  room_code?: string;
+  teacher_name?: string;
+}
+
 export type ActivityType = 'SEMINAR' | 'ASSIGNMENT' | 'PBL' | 'PGL' | 'OTHER' | 'ASSESSMENT';
 export type ActivityStatus = 'PENDING' | 'IN_PROGRESS' | 'SUBMITTED' | 'COMPLETED' | 'LATE' | 'REJECTED';
 export type StudentStatus = 'GOOD' | 'NEEDS_ATTENTION' | 'CRITICAL';

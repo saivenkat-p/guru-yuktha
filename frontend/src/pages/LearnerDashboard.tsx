@@ -1,6 +1,9 @@
 ﻿import React, { useEffect, useState } from 'react';
-import { GraduationCap, Sparkles, BookOpen, Compass, CheckCircle2, LogOut, User, Building, Shield, Lock, Globe } from 'lucide-react';
-import type { LearnerProfile, User as UserType, RoomMembership } from '../types';
+import { 
+  GraduationCap, Sparkles, BookOpen, Compass, CheckCircle2, LogOut, User, Building, 
+  Shield, Lock, Globe, Search, FileText, FileCode, Video, Image, File, ExternalLink, Filter 
+} from 'lucide-react';
+import type { LearnerProfile, User as UserType, RoomMembership, Resource } from '../types';
 import { api } from '../services/api';
 
 interface LearnerDashboardProps {
@@ -17,6 +20,12 @@ export const LearnerDashboard: React.FC<LearnerDashboardProps> = ({
   const [memberships, setMemberships] = useState<RoomMembership[]>([]);
   const [loadingRooms, setLoadingRooms] = useState(true);
 
+  // Public Resources state
+  const [publicResources, setPublicResources] = useState<Resource[]>([]);
+  const [loadingResources, setLoadingResources] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedType, setSelectedType] = useState<string>('ALL');
+
   useEffect(() => {
     async function loadMemberships() {
       try {
@@ -30,6 +39,43 @@ export const LearnerDashboard: React.FC<LearnerDashboardProps> = ({
     }
     loadMemberships();
   }, []);
+
+  const loadPublicResources = async () => {
+    setLoadingResources(true);
+    try {
+      const data = await api.getPublicResources({
+        search: searchQuery || undefined,
+        resource_type: selectedType !== 'ALL' ? selectedType : undefined,
+      });
+      setPublicResources(data);
+    } catch (err) {
+      console.error('Error fetching public resources:', err);
+    } finally {
+      setLoadingResources(false);
+    }
+  };
+
+  useEffect(() => {
+    loadPublicResources();
+  }, [searchQuery, selectedType]);
+
+  const getResourceIcon = (type: string) => {
+    switch (type) {
+      case 'PDF':
+      case 'DOC':
+        return <FileText className="w-5 h-5 text-indigo-400" />;
+      case 'PPT':
+        return <FileCode className="w-5 h-5 text-amber-400" />;
+      case 'VIDEO':
+        return <Video className="w-5 h-5 text-rose-400" />;
+      case 'IMAGE':
+        return <Image className="w-5 h-5 text-emerald-400" />;
+      case 'LINK':
+        return <ExternalLink className="w-5 h-5 text-sky-400" />;
+      default:
+        return <File className="w-5 h-5 text-slate-400" />;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col">
@@ -74,13 +120,13 @@ export const LearnerDashboard: React.FC<LearnerDashboardProps> = ({
           <div className="relative z-10 max-w-3xl space-y-4">
             <div className="inline-flex items-center space-x-2 px-3 py-1 bg-indigo-500/20 border border-indigo-500/30 rounded-full text-indigo-300 text-xs font-semibold">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Learner Platform Identity Active</span>
+              <span>Academic Workspace Active</span>
             </div>
             <h1 className="text-2xl md:text-4xl font-extrabold text-white tracking-tight">
               Welcome to Guru Yuktha, {user.full_name}
             </h1>
             <p className="text-sm md:text-base text-slate-300 leading-relaxed">
-              Your independent Learner account is now active. Guru Yuktha connects you with verified academic mentors, structured learning rooms, and activity tracking.
+              Explore public educational resources, organize your study materials, and access your enrolled academic learning rooms.
             </p>
           </div>
         </div>
@@ -153,7 +199,121 @@ export const LearnerDashboard: React.FC<LearnerDashboardProps> = ({
           </div>
         </div>
 
-        {/* My Learning Rooms Section (Phase 2) */}
+        {/* Public Learning Resources Discovery (Phase 3) */}
+        <div className="bg-slate-800/40 border border-slate-800 rounded-3xl p-6 md:p-8 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                <Globe className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Public Learning Resources</h3>
+                <p className="text-xs text-slate-400">
+                  Open syllabus notes, lectures, and study guides (Viewing does not create tracking relationships)
+                </p>
+              </div>
+            </div>
+
+            <div className="relative w-full sm:w-64">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search resources..."
+                className="w-full bg-slate-900/80 border border-slate-700 rounded-xl pl-9 pr-3.5 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          </div>
+
+          {/* Filter Pills */}
+          <div className="flex flex-wrap items-center gap-2">
+            {['ALL', 'PDF', 'PPT', 'DOC', 'VIDEO', 'LINK', 'IMAGE'].map((t) => (
+              <button
+                key={t}
+                onClick={() => setSelectedType(t)}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  selectedType === t
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'bg-slate-800/80 text-slate-400 hover:bg-slate-800 hover:text-white border border-slate-700/60'
+                }`}
+              >
+                {t === 'ALL' ? 'All Types' : t}
+              </button>
+            ))}
+          </div>
+
+          {/* Resources Grid */}
+          {loadingResources ? (
+            <div className="p-8 text-center text-xs text-slate-400">
+              <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+              Loading open learning resources...
+            </div>
+          ) : publicResources.length === 0 ? (
+            <div className="p-8 rounded-2xl bg-slate-900/60 border border-slate-800 text-center space-y-2">
+              <p className="text-xs font-bold text-slate-300">No public learning resources yet.</p>
+              <p className="text-[11px] text-slate-500 max-w-sm mx-auto">
+                Open educational resources published by academic mentors will be discoverable here without enrolling you in tracked classes.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {publicResources.map((res) => (
+                <div
+                  key={res.id}
+                  className="p-5 bg-slate-900/70 border border-slate-800 rounded-2xl space-y-3 flex flex-col justify-between hover:border-slate-700 transition-all"
+                >
+                  <div className="space-y-2.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center">
+                          {getResourceIcon(res.resource_type)}
+                        </div>
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-300 border border-slate-700">
+                          {res.resource_type}
+                        </span>
+                      </div>
+
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center space-x-1">
+                        <Globe className="w-3 h-3" />
+                        <span>Public</span>
+                      </span>
+                    </div>
+
+                    <div>
+                      <h4 className="font-bold text-sm text-white">{res.title}</h4>
+                      {res.description && (
+                        <p className="text-xs text-slate-400 mt-1 line-clamp-2 leading-relaxed">
+                          {res.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="pt-2.5 border-t border-slate-800 flex items-center justify-between text-[11px]">
+                    <div className="truncate max-w-[150px] text-slate-400">
+                      {res.room_name && <span>{res.room_name}</span>}
+                    </div>
+
+                    {res.file_url && (
+                      <a
+                        href={res.file_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2.5 py-1 bg-indigo-600/80 hover:bg-indigo-600 text-white rounded-lg font-bold inline-flex items-center space-x-1 transition-colors"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        <span>Access</span>
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* My Enrolled Learning Rooms Section (Phase 2) */}
         <div className="bg-slate-800/40 border border-slate-800 rounded-3xl p-6 md:p-8 space-y-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -161,8 +321,8 @@ export const LearnerDashboard: React.FC<LearnerDashboardProps> = ({
                 <BookOpen className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-white">My Learning Rooms</h3>
-                <p className="text-xs text-slate-400">Your active room memberships</p>
+                <h3 className="text-base font-bold text-white">My Enrolled Learning Rooms</h3>
+                <p className="text-xs text-slate-400">Tracked academic community spaces</p>
               </div>
             </div>
             <span className="px-3 py-1 bg-slate-700/40 text-slate-300 text-xs font-semibold rounded-lg border border-slate-700/50">
@@ -177,9 +337,9 @@ export const LearnerDashboard: React.FC<LearnerDashboardProps> = ({
             </div>
           ) : memberships.length === 0 ? (
             <div className="p-8 rounded-2xl bg-slate-900/60 border border-slate-800 text-center space-y-2">
-              <p className="text-xs font-bold text-slate-300">No learning rooms yet.</p>
+              <p className="text-xs font-bold text-slate-300">No enrolled learning rooms yet.</p>
               <p className="text-[11px] text-slate-400 max-w-md mx-auto">
-                You are not currently enrolled or tracked in any learning rooms. Once teachers invite you with your Learner ID or you join public rooms, they will appear here.
+                You are not currently enrolled or tracked in any private learning rooms. Once teachers invite you with your Learner ID or you join tracked rooms, they will appear here.
               </p>
             </div>
           ) : (
@@ -203,63 +363,6 @@ export const LearnerDashboard: React.FC<LearnerDashboardProps> = ({
               ))}
             </div>
           )}
-        </div>
-
-        {/* Phase Roadmap Preview */}
-        <div className="bg-slate-800/40 border border-slate-800 rounded-3xl p-6 md:p-8 space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-bold text-white">Platform Development Roadmap</h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Guru Yuktha is rolling out in structured phases as per the product blueprint.
-              </p>
-            </div>
-            <span className="px-3 py-1 bg-slate-700/50 text-slate-300 text-xs font-bold rounded-lg border border-slate-600/50">
-              Phase 2 Active
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 space-y-2">
-              <div className="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
-                <Compass className="w-4 h-4" />
-              </div>
-              <h4 className="text-xs font-bold text-white">Room Discovery</h4>
-              <p className="text-[11px] text-slate-400">
-                Discover teacher rooms and public learning spaces with open educational resources.
-              </p>
-            </div>
-
-            <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 space-y-2">
-              <div className="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center">
-                <BookOpen className="w-4 h-4" />
-              </div>
-              <h4 className="text-xs font-bold text-white">Organized Content</h4>
-              <p className="text-[11px] text-slate-400">
-                Browse academic folders, notes, study guides, and reference documents by subject.
-              </p>
-            </div>
-
-            <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 space-y-2">
-              <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-                <CheckCircle2 className="w-4 h-4" />
-              </div>
-              <h4 className="text-xs font-bold text-white">Tracking &amp; Submissions</h4>
-              <p className="text-[11px] text-slate-400">
-                Request tracking from teachers, submit seminar &amp; project evidence for verification.
-              </p>
-            </div>
-
-            <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 space-y-2">
-              <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center">
-                <Sparkles className="w-4 h-4" />
-              </div>
-              <h4 className="text-xs font-bold text-white">Verified Progress</h4>
-              <p className="text-[11px] text-slate-400">
-                View real-time, explainable verified progress metrics across all your active learning rooms.
-              </p>
-            </div>
-          </div>
         </div>
       </main>
 

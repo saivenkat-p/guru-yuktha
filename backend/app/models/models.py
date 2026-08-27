@@ -123,6 +123,8 @@ class Room(Base):
 
     owner = relationship("Teacher", back_populates="rooms")
     memberships = relationship("RoomMembership", back_populates="room", cascade="all, delete-orphan")
+    folders = relationship("Folder", back_populates="room", cascade="all, delete-orphan")
+    resources = relationship("Resource", back_populates="room", cascade="all, delete-orphan")
 
 # Dedicated Room Membership Model
 class RoomMembership(Base):
@@ -141,6 +143,45 @@ class RoomMembership(Base):
     room = relationship("Room", back_populates="memberships")
     user = relationship("User", back_populates="room_memberships")
     learner = relationship("Learner", back_populates="memberships")
+
+# Dedicated Folder Model (Phase 3)
+class Folder(Base):
+    __tablename__ = "folders"
+
+    id = Column(Integer, primary_key=True, index=True)
+    room_id = Column(Integer, ForeignKey("rooms.id"), nullable=False, index=True)
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    room = relationship("Room", back_populates="folders")
+    resources = relationship("Resource", back_populates="folder", cascade="all, delete-orphan")
+
+# Dedicated Room Resource Model (Phase 3)
+class Resource(Base):
+    __tablename__ = "resources"
+
+    id = Column(Integer, primary_key=True, index=True)
+    room_id = Column(Integer, ForeignKey("rooms.id"), nullable=False, index=True)
+    folder_id = Column(Integer, ForeignKey("folders.id"), nullable=True, index=True)
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    resource_type = Column(String(50), default="PDF")  # PDF, PPT, DOC, VIDEO, LINK, IMAGE, OTHER
+    file_url = Column(String(1000), nullable=True)
+    mime_type = Column(String(100), nullable=True)
+    file_size = Column(String(50), nullable=True)
+    visibility = Column(String(50), default="ROOM_ONLY")  # PUBLIC, ROOM_ONLY
+    uploaded_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    room = relationship("Room", back_populates="resources")
+    folder = relationship("Folder", back_populates="resources")
+    uploader = relationship("User")
 
 # Class model
 class Class(Base):

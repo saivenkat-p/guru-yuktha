@@ -153,6 +153,71 @@ class RoomMembershipOut(BaseModel):
     class Config:
         from_attributes = True
 
+# Folder Schemas (Phase 3)
+class FolderCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+class FolderUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    is_active: Optional[bool] = None
+
+class FolderOut(BaseModel):
+    id: int
+    room_id: int
+    name: str
+    description: Optional[str] = None
+    is_active: bool = True
+    resources_count: int = 0
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+# Resource Schemas (Phase 3)
+class ResourceCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    folder_id: Optional[int] = None
+    resource_type: Optional[str] = "PDF"
+    file_url: Optional[str] = None
+    mime_type: Optional[str] = None
+    file_size: Optional[str] = None
+    visibility: Optional[str] = "ROOM_ONLY" # PUBLIC or ROOM_ONLY
+
+class ResourceUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    folder_id: Optional[int] = None
+    resource_type: Optional[str] = None
+    file_url: Optional[str] = None
+    visibility: Optional[str] = None
+    is_active: Optional[bool] = None
+
+class ResourceOut(BaseModel):
+    id: int
+    room_id: int
+    folder_id: Optional[int] = None
+    title: str
+    description: Optional[str] = None
+    resource_type: str = "PDF"
+    file_url: Optional[str] = None
+    mime_type: Optional[str] = None
+    file_size: Optional[str] = None
+    visibility: str = "ROOM_ONLY"
+    is_active: bool = True
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+    folder_name: Optional[str] = None
+    room_name: Optional[str] = None
+    room_code: Optional[str] = None
+    teacher_name: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
 # Evidence
 class EvidenceFileOut(BaseModel):
     id: int

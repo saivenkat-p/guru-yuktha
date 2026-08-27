@@ -466,3 +466,136 @@ def test_room_membership_and_isolation():
 
     finally:
         db.close()
+
+# =======================================================
+# PHASE 3: FOLDERS + RESOURCES + PUBLIC DISCOVERY TESTS
+# =======================================================
+
+def test_phase3_folders_and_resources():
+    # Login Teacher 1
+    t1_token = client.post("/api/v1/auth/login", json={"email": "teacher@guruyuktha.edu", "password": "teacher123"}).json()["access_token"]
+    t1_headers = {"Authorization": f"Bearer {t1_token}"}
+
+    # Login Teacher 2
+    t2_token = client.post("/api/v1/auth/login", json={"email": "teacher2.math@guruyuktha.edu", "password": "passWord123!"}).json()["access_token"]
+    t2_headers = {"Authorization": f"Bearer {t2_token}"}
+
+    # Login Learner
+    l_token = client.post("/api/v1/auth/login", json={"email": "learner.rahul@student.edu", "password": "learnerpassword123"}).json()["access_token"]
+    l_headers = {"Authorization": f"Bearer {l_token}"}
+
+    # 1. Create a Teacher 1 Room
+    r_res = client.post("/api/v1/rooms", json={"name": "Literary Criticism 2026", "visibility": "PRIVATE"}, headers=t1_headers)
+    assert r_res.status_code == 201
+    room_id = r_res.json()["id"]
+
+    # --- FOLDERS TESTS ---
+    # 2. Teacher 1 creates Folder
+    f_res = client.post(f"/api/v1/rooms/{room_id}/folders", json={"name": "Unit 1 — Aristotle Poetics"}, headers=t1_headers)
+    assert f_res.status_code == 201
+    folder_id = f_res.json()["id"]
+    assert f_res.json()["name"] == "Unit 1 — Aristotle Poetics"
+
+    # 3. List folders
+    f_list = client.get(f"/api/v1/rooms/{room_id}/folders", headers=t1_headers)
+    assert f_list.status_code == 200
+    assert len(f_list.json()) >= 1
+
+    # 4. Teacher 2 cannot modify Folder in Teacher 1's room (403)
+    t2_f_edit = client.put(f"/api/v1/rooms/{room_id}/folders/{folder_id}", json={"name": "Hacked Folder"}, headers=t2_headers)
+    assert t2_f_edit.status_code == 403
+
+    # 5. Learner cannot modify Folder (403)
+    l_f_edit = client.put(f"/api/v1/rooms/{room_id}/folders/{folder_id}", json={"name": "Learner Folder"}, headers=l_headers)
+    assert l_f_edit.status_code == 403
+
+    # --- RESOURCES TESTS ---
+    # 6. Teacher 1 creates ROOM_ONLY Resource
+    res_private_payload = {
+        "title": "Aristotle Catharsis Lecture Notes",
+        "description": "Comprehensive notes for midterm review.",
+        "folder_id": folder_id,
+        "resource_type": "PDF",
+        "file_url": "https://storage.guruyuktha.edu/notes/poetics.pdf",
+        "visibility": "ROOM_ONLY"
+    }
+    res_p = client.post(f"/api/v1/rooms/{room_id}/resources", json=res_private_payload, headers=t1_headers)
+    assert res_p.status_code == 201
+    res_private_id = res_p.json()["id"]
+    assert res_p.json()["visibility"] == "ROOM_ONLY"
+    assert res_p.json()["folder_name"] == "Unit 1 — Aristotle Poetics"
+
+    # 7. Teacher 1 creates PUBLIC Resource
+    res_public_payload = {
+        "title": "Open Guide to Dramatic Theory",
+        "description": "Public educational overview of classical dramatic structures.",
+        "folder_id": folder_id,
+        "resource_type": "PDF",
+        "file_url": "https://storage.guruyuktha.edu/open/drama.pdf",
+        "visibility": "PUBLIC"
+    }
+    res_pub = client.post(f"/api/v1/rooms/{room_id}/resources", json=res_public_payload, headers=t1_headers)
+    assert res_pub.status_code == 201
+    res_pub_id = res_pub.json()["id"]
+    assert res_pub.json()["visibility"] == "PUBLIC"
+
+    # 8. Invalid resource type rejected (400)
+    bad_type_res = client.post(f"/api/v1/rooms/{room_id}/resources", json={
+        "title": "Bad Resource",
+        "resource_type": "EXE_MALWARE"
+    }, headers=t1_headers)
+    assert bad_type_res.status_code == 400
+
+    # 9. Invalid visibility rejected (400)
+    bad_vis_res = client.post(f"/api/v1/rooms/{room_id}/resources", json={
+        "title": "Bad Visibility",
+        "visibility": "SECRET_CLASSIFIED"
+    }, headers=t1_headers)
+    assert bad_vis_res.status_code == 400
+
+    # 10. Teacher 2 cannot modify resource in Teacher 1's room (403)
+    t2_res_edit = client.put(f"/api/v1/rooms/{room_id}/resources/{res_private_id}", json={"title": "Hacked Title"}, headers=t2_headers)
+    assert t2_res_edit.status_code == 403
+
+    # 11. Learner cannot modify resource (403)
+    l_res_edit = client.put(f"/api/v1/rooms/{room_id}/resources/{res_private_id}", json={"title": "Learner Title"}, headers=l_headers)
+    assert l_res_edit.status_code == 403
+
+    # --- PUBLIC DISCOVERY & SEPARATION TESTS ---
+    # 12. Public resource is discoverable via /api/v1/resources/public
+    pub_disc = client.get("/api/v1/resources/public")
+    assert pub_disc.status_code == 200
+    pub_ids = [r["id"] for r in pub_disc.json()]
+    assert res_pub_id in pub_ids
+    assert res_private_id not in pub_ids  # Private resource is NOT in public discovery
+
+    # 13. Viewing public resource does NOT create room membership or tracking
+    initial_memberships = client.get("/api/v1/rooms/my/memberships", headers=l_headers).json()
+    init_m_count = len(initial_memberships)
+
+    # Learner accesses public resource detail
+    pub_detail = client.get(f"/api/v1/rooms/{room_id}/resources/{res_pub_id}", headers=l_headers)
+    assert pub_detail.status_code == 200
+    assert pub_detail.json()["title"] == "Open Guide to Dramatic Theory"
+
+    # Verify memberships count did NOT change
+    after_memberships = client.get("/api/v1/rooms/my/memberships", headers=l_headers).json()
+    assert len(after_memberships) == init_m_count
+
+    # 14. Non-member learner is FORBIDDEN from viewing ROOM_ONLY resource (403)
+    priv_detail_forbidden = client.get(f"/api/v1/rooms/{room_id}/resources/{res_private_id}", headers=l_headers)
+    assert priv_detail_forbidden.status_code == 403
+
+    # 15. Teacher archives resource
+    arch_res = client.delete(f"/api/v1/rooms/{room_id}/resources/{res_pub_id}", headers=t1_headers)
+    assert arch_res.status_code == 200
+
+    # Archived resource is excluded from public discovery
+    pub_disc_after = client.get("/api/v1/resources/public").json()
+    assert not any(r["id"] == res_pub_id for r in pub_disc_after)
+
+    # 16. Teacher archives folder
+    arch_f = client.delete(f"/api/v1/rooms/{room_id}/folders/{folder_id}", headers=t1_headers)
+    assert arch_f.status_code == 200
+    f_list_after = client.get(f"/api/v1/rooms/{room_id}/folders", headers=t1_headers).json()
+    assert not any(f["id"] == folder_id for f in f_list_after)

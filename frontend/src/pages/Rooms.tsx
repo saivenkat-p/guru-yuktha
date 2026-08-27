@@ -1,11 +1,13 @@
-﻿import React, { useEffect, useState } from 'react';
-import { BookOpen, Plus, Users, Copy, Check, Lock, Globe, Archive, AlertCircle } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { BookOpen, Plus, Users, Copy, Check, Lock, Globe, Archive, ChevronRight, Folder } from 'lucide-react';
 import { api } from '../services/api';
 import type { Room } from '../types';
 import { CreateRoomModal } from '../components/forms/CreateRoomModal';
+import { RoomDetail } from './RoomDetail';
 
 export const Rooms: React.FC = () => {
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
@@ -47,6 +49,18 @@ export const Rooms: React.FC = () => {
         <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-3"></div>
         <p className="text-xs font-bold text-indigo-700">Loading Learning Rooms...</p>
       </div>
+    );
+  }
+
+  if (selectedRoomId !== null) {
+    return (
+      <RoomDetail
+        roomId={selectedRoomId}
+        onBack={() => {
+          setSelectedRoomId(null);
+          fetchRooms();
+        }}
+      />
     );
   }
 
@@ -98,7 +112,7 @@ export const Rooms: React.FC = () => {
           {rooms.map((room) => (
             <div
               key={room.id}
-              className="bg-white rounded-3xl border border-slate-100 shadow-xs hover:shadow-md transition-all p-5 space-y-4 flex flex-col justify-between"
+              className="bg-white rounded-3xl border border-slate-100 shadow-xs hover:shadow-md hover:border-indigo-200 transition-all p-5 space-y-4 flex flex-col justify-between"
             >
               <div className="space-y-3">
                 <div className="flex items-start justify-between gap-2">
@@ -112,7 +126,10 @@ export const Rooms: React.FC = () => {
                   </span>
 
                   <button
-                    onClick={() => handleArchive(room.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleArchive(room.id);
+                    }}
                     title="Archive Room"
                     className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                   >
@@ -120,8 +137,14 @@ export const Rooms: React.FC = () => {
                   </button>
                 </div>
 
-                <div>
-                  <h3 className="font-extrabold text-base text-slate-900">{room.name}</h3>
+                <div 
+                  onClick={() => setSelectedRoomId(room.id)}
+                  className="cursor-pointer group"
+                >
+                  <h3 className="font-extrabold text-base text-slate-900 group-hover:text-indigo-600 transition-colors flex items-center justify-between">
+                    <span>{room.name}</span>
+                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 transition-colors" />
+                  </h3>
                   {room.description && (
                     <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">
                       {room.description}
@@ -132,10 +155,13 @@ export const Rooms: React.FC = () => {
 
               <div className="pt-3 border-t border-slate-100 space-y-2.5">
                 <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center space-x-1.5 text-slate-600 font-semibold">
+                  <button
+                    onClick={() => setSelectedRoomId(room.id)}
+                    className="flex items-center space-x-1.5 text-slate-600 hover:text-indigo-600 font-semibold cursor-pointer"
+                  >
                     <Users className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>{room.active_members_count} Tracked Learners</span>
-                  </div>
+                    <span>{room.active_members_count} Tracked</span>
+                  </button>
 
                   <button
                     onClick={() => handleCopyCode(room.code)}

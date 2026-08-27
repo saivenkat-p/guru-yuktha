@@ -1,6 +1,6 @@
 import type { 
   DashboardSummary, AttentionStudent, ClassInsights, Student, StudentProfile, 
-  Activity, Material, Room, RoomMembership 
+  Activity, Material, Room, RoomMembership, Folder, Resource 
 } from '../types';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api/v1';
@@ -90,6 +90,46 @@ export const api = {
   }),
   getRoomMembers: (id: number) => fetchApi<RoomMembership[]>(`/rooms/${id}/members`),
   getMyMemberships: () => fetchApi<RoomMembership[]>('/rooms/my/memberships'),
+
+  // Folders & Resources (Phase 3)
+  getRoomFolders: (roomId: number) => fetchApi<Folder[]>(`/rooms/${roomId}/folders`),
+  createFolder: (roomId: number, data: { name: string; description?: string }) => fetchApi<Folder>(`/rooms/${roomId}/folders`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  updateFolder: (roomId: number, folderId: number, data: Partial<Folder>) => fetchApi<Folder>(`/rooms/${roomId}/folders/${folderId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+  archiveFolder: (roomId: number, folderId: number) => fetchApi<{ message: string; id: number }>(`/rooms/${roomId}/folders/${folderId}`, {
+    method: 'DELETE',
+  }),
+
+  getRoomResources: (roomId: number, folderId?: number) => {
+    const q = folderId ? `?folder_id=${folderId}` : '';
+    return fetchApi<Resource[]>(`/rooms/${roomId}/resources${q}`);
+  },
+  createResource: (roomId: number, data: { title: string; description?: string; folder_id?: number; resource_type?: string; file_url?: string; visibility?: string }) => fetchApi<Resource>(`/rooms/${roomId}/resources`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  getResourceDetail: (roomId: number, resourceId: number) => fetchApi<Resource>(`/rooms/${roomId}/resources/${resourceId}`),
+  updateResource: (roomId: number, resourceId: number, data: Partial<Resource>) => fetchApi<Resource>(`/rooms/${roomId}/resources/${resourceId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+  archiveResource: (roomId: number, resourceId: number) => fetchApi<{ message: string; id: number }>(`/rooms/${roomId}/resources/${resourceId}`, {
+    method: 'DELETE',
+  }),
+
+  // Public Resources Discovery
+  getPublicResources: (params?: { search?: string; resource_type?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.search) query.append('search', params.search);
+    if (params?.resource_type) query.append('resource_type', params.resource_type);
+    const str = query.toString();
+    return fetchApi<Resource[]>(`/resources/public${str ? `?${str}` : ''}`);
+  },
 
   // Dashboard
   getDashboardSummary: () => fetchApi<DashboardSummary>('/dashboard/summary'),
