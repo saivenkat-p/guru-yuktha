@@ -1,3 +1,48 @@
+export type UserRole = 'TEACHER' | 'LEARNER' | 'STUDENT' | 'ADMIN';
+
+export interface User {
+  id: number;
+  email: string;
+  full_name: string;
+  role: UserRole;
+  avatar_url?: string;
+}
+
+export interface TeacherProfile {
+  id: number;
+  user_id: number;
+  employee_code?: string;
+  department: string;
+  designation: string;
+  college_name: string;
+  user?: User;
+}
+
+export interface LearnerProfile {
+  id: number;
+  user_id: number;
+  learner_id: string;
+  roll_number?: string;
+  course?: string;
+  semester?: string;
+  department?: string;
+  college_name?: string;
+  phone?: string;
+  user?: User;
+}
+
+export interface AuthMeResponse {
+  user: User;
+  role: UserRole;
+  teacher?: TeacherProfile;
+  learner?: LearnerProfile;
+  id?: number;
+  employee_code?: string;
+  department?: string;
+  designation?: string;
+  college_name?: string;
+}
+
 export type ActivityType = 'SEMINAR' | 'ASSIGNMENT' | 'PBL' | 'PGL' | 'OTHER' | 'ASSESSMENT';
 export type ActivityStatus = 'PENDING' | 'IN_PROGRESS' | 'SUBMITTED' | 'COMPLETED' | 'LATE' | 'REJECTED';
 export type StudentStatus = 'GOOD' | 'NEEDS_ATTENTION' | 'CRITICAL';

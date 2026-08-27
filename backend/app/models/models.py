@@ -8,6 +8,7 @@ from app.core.database import Base
 
 class UserRole(str, enum.Enum):
     TEACHER = "TEACHER"
+    LEARNER = "LEARNER"
     STUDENT = "STUDENT"
     ADMIN = "ADMIN"
 
@@ -70,6 +71,7 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     teacher_profile = relationship("Teacher", back_populates="user", uselist=False)
+    learner_profile = relationship("Learner", back_populates="user", uselist=False)
 
 # Teacher model
 class Teacher(Base):
@@ -84,6 +86,23 @@ class Teacher(Base):
 
     user = relationship("User", back_populates="teacher_profile")
     classes = relationship("Class", back_populates="teacher")
+
+# Learner model (for independently registered learners)
+class Learner(Base):
+    __tablename__ = "learners"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
+    learner_id = Column(String(100), unique=True, index=True, nullable=False)  # e.g., STU-2026-000001
+    roll_number = Column(String(100), nullable=True)
+    course = Column(String(100), nullable=True)
+    semester = Column(String(50), nullable=True)
+    department = Column(String(100), nullable=True)
+    college_name = Column(String(255), nullable=True)
+    phone = Column(String(50), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="learner_profile")
 
 # Class model
 class Class(Base):

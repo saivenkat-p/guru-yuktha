@@ -5,6 +5,7 @@ import { StudentProfile } from './pages/StudentProfile';
 import { Materials } from './pages/Materials';
 import { Reports } from './pages/Reports';
 import { Login } from './pages/Login';
+import { LearnerDashboard } from './pages/LearnerDashboard';
 import { BottomNav } from './components/layout/BottomNav';
 import { DesktopSidebar } from './components/layout/DesktopSidebar';
 import { QuickAddMenuModal } from './components/forms/QuickAddMenuModal';
@@ -12,13 +13,17 @@ import { AddStudentModal } from './components/forms/AddStudentModal';
 import { AddActivityModal } from './components/forms/AddActivityModal';
 import { MarkAttendanceModal } from './components/forms/MarkAttendanceModal';
 import { AccountProfileModal } from './components/profile/AccountProfileModal';
-import type { Student } from './types';
+import type { Student, User, LearnerProfile, UserRole } from './types';
 import { api, getAuthToken, removeAuthToken } from './services/api';
 
 export function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     return !!getAuthToken();
   });
+
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [userRole, setUserRole] = useState<UserRole>('TEACHER');
+  const [learnerProfile, setLearnerProfile] = useState<LearnerProfile | null>(null);
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'students' | 'materials' | 'reports'>('dashboard');
   const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
@@ -53,22 +58,39 @@ export function App() {
     }
 
     try {
-      const [studentData, teacherRes] = await Promise.all([
-        api.getStudents(),
-        api.getTeacherProfile().catch(() => null),
+      const meRes = await api.getMe().catch(() => null);
+      if (!meRes || !meRes.user) {
+        throw new Error('Unable to authenticate user session');
+      }
+
+      setCurrentUser(meRes.user);
+      const role = (meRes.role || meRes.user.role || 'TEACHER') as UserRole;
+      setUserRole(role);
+
+      if (role === 'LEARNER' || role === 'STUDENT') {
+        setLearnerProfile(meRes.learner || null);
+        setIsAuthenticated(true);
+        setLoadingAuth(false);
+        return;
+      }
+
+      // Teacher role setup
+      const [studentData] = await Promise.all([
+        api.getStudents().catch(() => []),
       ]);
 
       setStudents(studentData);
 
-      if (teacherRes && teacherRes.user) {
+      if (meRes.teacher || meRes.user) {
+        const teacherData = meRes.teacher || meRes;
         setTeacherProfile({
-          name: teacherRes.user.full_name,
-          designation: teacherRes.designation || 'Lecturer in English',
-          department: teacherRes.department || 'English',
-          collegeName: teacherRes.college_name || 'GDC Ramachandrapuram',
-          employeeCode: teacherRes.employee_code || `EMP-${teacherRes.user.id}`,
-          email: teacherRes.user.email,
-          avatarUrl: teacherRes.user.avatar_url || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
+          name: meRes.user.full_name,
+          designation: teacherData.designation || 'Lecturer in English',
+          department: teacherData.department || 'English',
+          collegeName: teacherData.college_name || 'GDC Ramachandrapuram',
+          employeeCode: teacherData.employee_code || `EMP-${meRes.user.id}`,
+          email: meRes.user.email,
+          avatarUrl: meRes.user.avatar_url || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
         });
       }
 
@@ -93,6 +115,8 @@ export function App() {
   const handleLogout = () => {
     removeAuthToken();
     setIsAuthenticated(false);
+    setCurrentUser(null);
+    setLearnerProfile(null);
     setSelectedStudentId(null);
     setActiveTab('dashboard');
   };
@@ -161,6 +185,17 @@ export function App() {
 
   if (!isAuthenticated) {
     return <Login onAuthSuccess={handleAuthSuccess} />;
+  }
+
+  // Learner Persona View (Phase 1)
+  if ((userRole === 'LEARNER' || userRole === 'STUDENT') && currentUser) {
+    return (
+      <LearnerDashboard
+        user={currentUser}
+        learnerProfile={learnerProfile}
+        onLogout={handleLogout}
+      />
+    );
   }
 
   const renderCurrentView = () => {

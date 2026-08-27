@@ -8,6 +8,7 @@ interface LoginProps {
 
 export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [role, setRole] = useState<'TEACHER' | 'LEARNER'>('TEACHER');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -15,14 +16,22 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
   const [signInEmail, setSignInEmail] = useState('');
   const [signInPassword, setSignInPassword] = useState('');
 
-  // Sign Up Form
+  // Sign Up Form (Common)
   const [signUpFullName, setSignUpFullName] = useState('');
   const [signUpEmail, setSignUpEmail] = useState('');
   const [signUpPassword, setSignUpPassword] = useState('');
+  
+  // Teacher-specific
   const [signUpDepartment, setSignUpDepartment] = useState('');
   const [signUpDesignation, setSignUpDesignation] = useState('');
   const [signUpCollege, setSignUpCollege] = useState('');
   const [signUpEmpCode, setSignUpEmpCode] = useState('');
+
+  // Learner-specific
+  const [signUpRollNumber, setSignUpRollNumber] = useState('');
+  const [signUpCourse, setSignUpCourse] = useState('');
+  const [signUpSemester, setSignUpSemester] = useState('');
+  const [signUpPhone, setSignUpPhone] = useState('');
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,15 +57,28 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
     setError(null);
     setLoading(true);
     try {
-      const res = await api.signup({
+      const payload: any = {
         full_name: signUpFullName.trim(),
         email: signUpEmail.trim(),
         password: signUpPassword,
-        department: signUpDepartment.trim() || undefined,
-        designation: signUpDesignation.trim() || undefined,
-        college_name: signUpCollege.trim() || undefined,
-        employee_code: signUpEmpCode.trim() || undefined,
-      });
+        role: role,
+      };
+
+      if (role === 'TEACHER') {
+        payload.department = signUpDepartment.trim() || undefined;
+        payload.designation = signUpDesignation.trim() || undefined;
+        payload.college_name = signUpCollege.trim() || undefined;
+        payload.employee_code = signUpEmpCode.trim() || undefined;
+      } else {
+        payload.roll_number = signUpRollNumber.trim() || undefined;
+        payload.course = signUpCourse.trim() || undefined;
+        payload.semester = signUpSemester.trim() || undefined;
+        payload.department = signUpDepartment.trim() || undefined;
+        payload.college_name = signUpCollege.trim() || undefined;
+        payload.phone = signUpPhone.trim() || undefined;
+      }
+
+      const res = await api.signup(payload);
       if (res.access_token) {
         setAuthToken(res.access_token);
         onAuthSuccess(res.access_token, res.user);
@@ -132,7 +154,7 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
                   required
                   value={signInEmail}
                   onChange={(e) => setSignInEmail(e.target.value)}
-                  placeholder="faculty@institution.edu"
+                  placeholder="name@institution.edu"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
@@ -181,7 +203,40 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
           </form>
         ) : (
           /* Sign Up View */
-          <form onSubmit={handleSignUp} className="p-6 space-y-3.5 max-h-[60vh] overflow-y-auto pr-2">
+          <form onSubmit={handleSignUp} className="p-6 space-y-3.5 max-h-[65vh] overflow-y-auto pr-2">
+            {/* Account Type Selector */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                I am registering as:
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRole('TEACHER')}
+                  className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center space-x-2 cursor-pointer ${
+                    role === 'TEACHER'
+                      ? 'border-indigo-600 bg-indigo-50 text-indigo-700 ring-2 ring-indigo-200'
+                      : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  <Building className="w-4 h-4" />
+                  <span>Teacher</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRole('LEARNER')}
+                  className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center space-x-2 cursor-pointer ${
+                    role === 'LEARNER'
+                      ? 'border-indigo-600 bg-indigo-50 text-indigo-700 ring-2 ring-indigo-200'
+                      : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  <User className="w-4 h-4" />
+                  <span>Learner</span>
+                </button>
+              </div>
+            </div>
+
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
                 Full Name *
@@ -193,7 +248,7 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
                   required
                   value={signUpFullName}
                   onChange={(e) => setSignUpFullName(e.target.value)}
-                  placeholder="e.g. Dr. Rajesh Sharma"
+                  placeholder={role === 'TEACHER' ? 'e.g. Dr. Rajesh Sharma' : 'e.g. Rahul Verma'}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
@@ -210,7 +265,7 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
                   required
                   value={signUpEmail}
                   onChange={(e) => setSignUpEmail(e.target.value)}
-                  placeholder="faculty@institution.edu"
+                  placeholder={role === 'TEACHER' ? 'faculty@institution.edu' : 'student@college.edu'}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
@@ -234,66 +289,151 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Department
-                </label>
-                <div className="relative">
-                  <BookOpen className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                  <input
-                    type="text"
-                    value={signUpDepartment}
-                    onChange={(e) => setSignUpDepartment(e.target.value)}
-                    placeholder="e.g. English"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
-              </div>
+            {/* Role-Specific Fields */}
+            {role === 'TEACHER' ? (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Department
+                    </label>
+                    <div className="relative">
+                      <BookOpen className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                      <input
+                        type="text"
+                        value={signUpDepartment}
+                        onChange={(e) => setSignUpDepartment(e.target.value)}
+                        placeholder="e.g. English"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Designation
-                </label>
-                <div className="relative">
-                  <BadgeCheck className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                  <input
-                    type="text"
-                    value={signUpDesignation}
-                    onChange={(e) => setSignUpDesignation(e.target.value)}
-                    placeholder="e.g. Lecturer"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Designation
+                    </label>
+                    <div className="relative">
+                      <BadgeCheck className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                      <input
+                        type="text"
+                        value={signUpDesignation}
+                        onChange={(e) => setSignUpDesignation(e.target.value)}
+                        placeholder="e.g. Lecturer"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                College / Institution Name
-              </label>
-              <div className="relative">
-                <Building className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                <input
-                  type="text"
-                  value={signUpCollege}
-                  onChange={(e) => setSignUpCollege(e.target.value)}
-                  placeholder="e.g. Government Degree College"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-            </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    College / Institution Name
+                  </label>
+                  <div className="relative">
+                    <Building className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                    <input
+                      type="text"
+                      value={signUpCollege}
+                      onChange={(e) => setSignUpCollege(e.target.value)}
+                      placeholder="e.g. Government Degree College"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Course / Program
+                    </label>
+                    <div className="relative">
+                      <BookOpen className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                      <input
+                        type="text"
+                        value={signUpCourse}
+                        onChange={(e) => setSignUpCourse(e.target.value)}
+                        placeholder="e.g. B.A. / B.Sc"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Semester / Year
+                    </label>
+                    <div className="relative">
+                      <BadgeCheck className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                      <input
+                        type="text"
+                        value={signUpSemester}
+                        onChange={(e) => setSignUpSemester(e.target.value)}
+                        placeholder="e.g. II Sem"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Roll Number (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={signUpRollNumber}
+                      onChange={(e) => setSignUpRollNumber(e.target.value)}
+                      placeholder="e.g. 2026-ENG-042"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Phone (Optional)
+                    </label>
+                    <input
+                      type="tel"
+                      value={signUpPhone}
+                      onChange={(e) => setSignUpPhone(e.target.value)}
+                      placeholder="e.g. +91 98765..."
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    College / Institution Name
+                  </label>
+                  <div className="relative">
+                    <Building className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                    <input
+                      type="text"
+                      value={signUpCollege}
+                      onChange={(e) => setSignUpCollege(e.target.value)}
+                      placeholder="e.g. Government Degree College"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl transition-colors shadow-md hover:shadow-lg flex items-center justify-center space-x-2 disabled:opacity-50 mt-2 cursor-pointer"
+              className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl transition-colors shadow-md hover:shadow-lg flex items-center justify-center space-x-2 disabled:opacity-50 mt-4 cursor-pointer"
             >
               {loading ? (
-                <span>Creating Account...</span>
+                <span>Creating {role === 'TEACHER' ? 'Teacher' : 'Learner'} Account...</span>
               ) : (
                 <>
-                  <span>Create Account</span>
+                  <span>Create {role === 'TEACHER' ? 'Teacher' : 'Learner'} Account</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}

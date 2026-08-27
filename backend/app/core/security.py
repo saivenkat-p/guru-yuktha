@@ -52,3 +52,21 @@ def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_
     if user is None:
         raise credentials_exception
     return user
+
+require_authenticated_user = get_current_user
+
+def require_teacher(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role != "TEACHER" and current_user.role != "ADMIN":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access forbidden: Teacher privileges required"
+        )
+    return current_user
+
+def require_learner(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role != "LEARNER" and current_user.role != "STUDENT" and current_user.role != "ADMIN":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access forbidden: Learner privileges required"
+        )
+    return current_user

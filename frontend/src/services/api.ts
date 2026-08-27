@@ -61,6 +61,7 @@ export const api = {
     body: JSON.stringify(data),
   }),
 
+  getMe: () => fetchApi<any>('/auth/me'),
   getTeacherProfile: () => fetchApi<any>('/auth/me'),
 
   updateTeacherProfile: (profile: any) => fetchApi<any>('/auth/profile', {

@@ -19,12 +19,19 @@ class SignUpRequest(BaseModel):
     full_name: str
     email: EmailStr
     password: str
-    designation: Optional[str] = "Lecturer in English"
-    department: Optional[str] = "English"
-    college_name: Optional[str] = "GDC Ramachandrapuram"
+    role: str = "TEACHER"
+    # Teacher fields
+    designation: Optional[str] = None
+    department: Optional[str] = None
+    college_name: Optional[str] = None
     employee_code: Optional[str] = None
+    # Learner fields
+    roll_number: Optional[str] = None
+    course: Optional[str] = None
+    semester: Optional[str] = None
+    phone: Optional[str] = None
 
-# User & Teacher
+# User, Teacher & Learner
 class UserOut(BaseModel):
     id: int
     email: str
@@ -47,12 +54,54 @@ class TeacherOut(BaseModel):
     class Config:
         from_attributes = True
 
+class LearnerOut(BaseModel):
+    id: int
+    user_id: int
+    learner_id: str
+    roll_number: Optional[str] = None
+    course: Optional[str] = None
+    semester: Optional[str] = None
+    department: Optional[str] = None
+    college_name: Optional[str] = None
+    phone: Optional[str] = None
+    user: UserOut
+
+    class Config:
+        from_attributes = True
+
+class AuthMeResponse(BaseModel):
+    user: UserOut
+    role: str
+    teacher: Optional[TeacherOut] = None
+    learner: Optional[LearnerOut] = None
+
+    # Backward compatibility fields for legacy /auth/me consumer
+    id: Optional[int] = None
+    employee_code: Optional[str] = None
+    department: Optional[str] = None
+    designation: Optional[str] = None
+    college_name: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
 class TeacherProfileUpdate(BaseModel):
     full_name: Optional[str] = None
     designation: Optional[str] = None
     department: Optional[str] = None
     college_name: Optional[str] = None
     employee_code: Optional[str] = None
+    email: Optional[str] = None
+    avatar_url: Optional[str] = None
+
+class LearnerProfileUpdate(BaseModel):
+    full_name: Optional[str] = None
+    roll_number: Optional[str] = None
+    course: Optional[str] = None
+    semester: Optional[str] = None
+    department: Optional[str] = None
+    college_name: Optional[str] = None
+    phone: Optional[str] = None
     email: Optional[str] = None
     avatar_url: Optional[str] = None
 
