@@ -5,6 +5,7 @@ import { StudentProfile } from './pages/StudentProfile';
 import { Materials } from './pages/Materials';
 import { Reports } from './pages/Reports';
 import { Rooms } from './pages/Rooms';
+import { Discover } from './pages/Discover';
 import { Login } from './pages/Login';
 import { LearnerDashboard } from './pages/LearnerDashboard';
 import { BottomNav } from './components/layout/BottomNav';
@@ -23,20 +24,22 @@ export function App() {
   });
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [userRole, setUserRole] = useState<UserRole>('TEACHER');
+  const [userRole, setUserRole] = useState<UserRole>('MEMBER');
   const [learnerProfile, setLearnerProfile] = useState<LearnerProfile | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'rooms' | 'students' | 'materials' | 'reports'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'rooms' | 'discover' | 'students' | 'materials' | 'reports'>('dashboard');
   const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [loadingAuth, setLoadingAuth] = useState(true);
 
-  // Teacher Profile state
+  // Universal Member Profile state
   const [teacherProfile, setTeacherProfile] = useState({
-    name: 'Faculty',
-    designation: 'Faculty Member',
-    department: 'Department',
-    collegeName: 'Institution',
+    name: 'Universal Member',
+    designation: 'Member',
+    guruId: '',
+    username: '',
+    department: 'Knowledge Hub',
+    collegeName: 'Guru Yuktha Network',
     employeeCode: '',
     email: '',
     avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
@@ -65,35 +68,32 @@ export function App() {
       }
 
       setCurrentUser(meRes.user);
-      const role = (meRes.role || meRes.user.role || 'TEACHER') as UserRole;
+      const role = (meRes.role || meRes.user.role || 'MEMBER') as UserRole;
       setUserRole(role);
 
-      if (role === 'LEARNER' || role === 'STUDENT') {
-        setLearnerProfile(meRes.learner || null);
-        setIsAuthenticated(true);
-        setLoadingAuth(false);
-        return;
+      if (meRes.learner) {
+        setLearnerProfile(meRes.learner);
       }
 
-      // Teacher role setup
+      // Universal Member setup
       const [studentData] = await Promise.all([
         api.getStudents().catch(() => []),
       ]);
 
       setStudents(studentData);
 
-      if (meRes.teacher || meRes.user) {
-        const teacherData = meRes.teacher || meRes;
-        setTeacherProfile({
-          name: meRes.user.full_name,
-          designation: teacherData.designation || 'Faculty',
-          department: teacherData.department || 'Academic Department',
-          collegeName: teacherData.college_name || 'Academic Institution',
-          employeeCode: teacherData.employee_code || `EMP-${meRes.user.id}`,
-          email: meRes.user.email,
-          avatarUrl: meRes.user.avatar_url || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
-        });
-      }
+      const teacherData = meRes.teacher || meRes;
+      setTeacherProfile({
+        name: meRes.user.full_name || 'Universal Member',
+        designation: teacherData.designation || (meRes.user.is_guru_eligible ? 'Guru / Educator' : 'Universal Member'),
+        guruId: meRes.user.guru_id || '',
+        username: meRes.user.username || '',
+        department: teacherData.department || 'Knowledge Department',
+        collegeName: teacherData.college_name || 'Guru Yuktha Network',
+        employeeCode: teacherData.employee_code || meRes.user.guru_id || `EMP-${meRes.user.id}`,
+        email: meRes.user.email,
+        avatarUrl: meRes.user.avatar_url || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
+      });
 
       setIsAuthenticated(true);
     } catch (err) {
@@ -165,6 +165,8 @@ export function App() {
         ...prev,
         name: updated.user?.full_name || prev.name,
         designation: updated.designation || prev.designation,
+        guruId: updated.user?.guru_id || prev.guruId,
+        username: updated.user?.username || prev.username,
         department: updated.department || prev.department,
         collegeName: updated.college_name || prev.collegeName,
         employeeCode: updated.employee_code || prev.employeeCode,
@@ -186,17 +188,6 @@ export function App() {
 
   if (!isAuthenticated) {
     return <Login onAuthSuccess={handleAuthSuccess} />;
-  }
-
-  // Learner Persona View (Phase 1)
-  if ((userRole === 'LEARNER' || userRole === 'STUDENT') && currentUser) {
-    return (
-      <LearnerDashboard
-        user={currentUser}
-        learnerProfile={learnerProfile}
-        onLogout={handleLogout}
-      />
-    );
   }
 
   const renderCurrentView = () => {
@@ -225,8 +216,16 @@ export function App() {
             collegeName={teacherProfile.collegeName}
           />
         );
+      case 'discover':
+        return (
+          <Discover
+            onSelectRoom={(_roomId) => {
+              setActiveTab('rooms');
+            }}
+          />
+        );
       case 'rooms':
-        return <Rooms />;
+        return <Rooms onNavigateToDiscover={() => setActiveTab('discover')} />;
       case 'students':
         return (
           <Students
@@ -260,6 +259,8 @@ export function App() {
         activeTab={activeTab}
         teacherName={teacherProfile.name}
         designation={teacherProfile.designation}
+        guruId={teacherProfile.guruId}
+        username={teacherProfile.username}
         avatarUrl={teacherProfile.avatarUrl}
         onSelectTab={(tab) => {
           setSelectedStudentId(null);

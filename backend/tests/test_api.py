@@ -289,9 +289,19 @@ def test_room_creation_and_authorization():
     t_token = t_login.json()["access_token"]
     t_headers = {"Authorization": f"Bearer {t_token}"}
 
-    # 2. Learner setup
+    # 2. Ensure Learner is signed up
     l_login = client.post("/api/v1/auth/login", json={"email": "learner.rahul@student.edu", "password": "learnerpassword123"})
-    l_token = l_login.json()["access_token"]
+    if l_login.status_code != 200:
+        l_signup = client.post("/api/v1/auth/signup", json={
+            "email": "learner.rahul@student.edu",
+            "password": "learnerpassword123",
+            "full_name": "Rahul Verma",
+            "role": "LEARNER",
+            "course": "B.Sc Computer Science"
+        })
+        l_token = l_signup.json()["access_token"]
+    else:
+        l_token = l_login.json()["access_token"]
     l_headers = {"Authorization": f"Bearer {l_token}"}
 
     # Test 1: Teacher can create room
@@ -310,9 +320,10 @@ def test_room_creation_and_authorization():
     assert room_data["active_members_count"] == 0
     room_id = room_data["id"]
 
-    # Test 2: Learner cannot create room
-    l_create_res = client.post("/api/v1/rooms", json={"name": "Hacked Room"}, headers=l_headers)
-    assert l_create_res.status_code == 403
+    # Test 2: In Universal Member architecture, any Member can create room (Dual Context)
+    l_create_res = client.post("/api/v1/rooms", json={"name": "Rahul's Study Group"}, headers=l_headers)
+    assert l_create_res.status_code == 201
+    assert l_create_res.json()["name"] == "Rahul's Study Group"
 
     # Test 3: Unauthenticated user cannot create room
     anon_res = client.post("/api/v1/rooms", json={"name": "Anon Room"})
@@ -338,16 +349,20 @@ def test_room_creation_and_authorization():
 
     # Test 8: Teacher 2 cannot modify Teacher 1's room
     # Register teacher 2
-    t2_signup = client.post("/api/v1/auth/signup", json={
-        "email": "teacher2.math@guruyuktha.edu",
-        "password": "passWord123!",
-        "full_name": "Prof. Srinivasa Ramanujan",
-        "role": "TEACHER",
-        "department": "Mathematics",
-        "designation": "Professor",
-        "college_name": "GDC"
-    })
-    t2_token = t2_signup.json()["access_token"]
+    t2_login = client.post("/api/v1/auth/login", json={"email": "teacher2.math@guruyuktha.edu", "password": "passWord123!"})
+    if t2_login.status_code != 200:
+        t2_signup = client.post("/api/v1/auth/signup", json={
+            "email": "teacher2.math@guruyuktha.edu",
+            "password": "passWord123!",
+            "full_name": "Prof. Srinivasa Ramanujan",
+            "role": "TEACHER",
+            "department": "Mathematics",
+            "designation": "Professor",
+            "college_name": "GDC"
+        })
+        t2_token = t2_signup.json()["access_token"]
+    else:
+        t2_token = t2_login.json()["access_token"]
     t2_headers = {"Authorization": f"Bearer {t2_token}"}
 
     t2_update_res = client.put(f"/api/v1/rooms/{room_id}", json={"name": "Stolen Room"}, headers=t2_headers)
@@ -362,6 +377,30 @@ def test_room_creation_and_authorization():
 def test_room_membership_and_isolation():
     from app.models.models import Room, RoomMembership, User, Learner
 
+    # Ensure teacher2 exists
+    t2_login = client.post("/api/v1/auth/login", json={"email": "teacher2.math@guruyuktha.edu", "password": "passWord123!"})
+    if t2_login.status_code != 200:
+        client.post("/api/v1/auth/signup", json={
+            "email": "teacher2.math@guruyuktha.edu",
+            "password": "passWord123!",
+            "full_name": "Prof. Srinivasa Ramanujan",
+            "role": "TEACHER",
+            "department": "Mathematics",
+            "designation": "Professor",
+            "college_name": "GDC"
+        })
+
+    # Ensure learner exists
+    l_login = client.post("/api/v1/auth/login", json={"email": "learner.rahul@student.edu", "password": "learnerpassword123"})
+    if l_login.status_code != 200:
+        client.post("/api/v1/auth/signup", json={
+            "email": "learner.rahul@student.edu",
+            "password": "learnerpassword123",
+            "full_name": "Rahul Verma",
+            "role": "LEARNER",
+            "course": "B.Sc Computer Science"
+        })
+
     db = TestingSessionLocal()
     try:
         # Get users
@@ -372,7 +411,8 @@ def test_room_membership_and_isolation():
 
         # Create Room 1 (Teacher 1)
         r1 = Room(
-            teacher_id=t1_user.teacher_profile.id,
+            teacher_id=t1_user.teacher_profile.id if t1_user.teacher_profile else None,
+            owner_id=t1_user.id,
             name="English Honours 2026",
             code="ENG-HON-2026",
             visibility="PRIVATE",
@@ -380,7 +420,8 @@ def test_room_membership_and_isolation():
         )
         # Create Room 2 (Teacher 2)
         r2 = Room(
-            teacher_id=t2_user.teacher_profile.id,
+            teacher_id=t2_user.teacher_profile.id if t2_user.teacher_profile else None,
+            owner_id=t2_user.id,
             name="Real Analysis 2026",
             code="MATH-REAL-2026",
             visibility="PUBLIC",
@@ -476,12 +517,30 @@ def test_phase3_folders_and_resources():
     t1_token = client.post("/api/v1/auth/login", json={"email": "teacher@guruyuktha.edu", "password": "teacher123"}).json()["access_token"]
     t1_headers = {"Authorization": f"Bearer {t1_token}"}
 
-    # Login Teacher 2
-    t2_token = client.post("/api/v1/auth/login", json={"email": "teacher2.math@guruyuktha.edu", "password": "passWord123!"}).json()["access_token"]
+    # Ensure Teacher 2
+    t2_login = client.post("/api/v1/auth/login", json={"email": "teacher2.math@guruyuktha.edu", "password": "passWord123!"})
+    if t2_login.status_code != 200:
+        client.post("/api/v1/auth/signup", json={
+            "email": "teacher2.math@guruyuktha.edu",
+            "password": "passWord123!",
+            "full_name": "Prof. Srinivasa Ramanujan",
+            "role": "TEACHER"
+        })
+        t2_login = client.post("/api/v1/auth/login", json={"email": "teacher2.math@guruyuktha.edu", "password": "passWord123!"})
+    t2_token = t2_login.json()["access_token"]
     t2_headers = {"Authorization": f"Bearer {t2_token}"}
 
-    # Login Learner
-    l_token = client.post("/api/v1/auth/login", json={"email": "learner.rahul@student.edu", "password": "learnerpassword123"}).json()["access_token"]
+    # Ensure Learner
+    l_login = client.post("/api/v1/auth/login", json={"email": "learner.rahul@student.edu", "password": "learnerpassword123"})
+    if l_login.status_code != 200:
+        client.post("/api/v1/auth/signup", json={
+            "email": "learner.rahul@student.edu",
+            "password": "learnerpassword123",
+            "full_name": "Rahul Verma",
+            "role": "LEARNER"
+        })
+        l_login = client.post("/api/v1/auth/login", json={"email": "learner.rahul@student.edu", "password": "learnerpassword123"})
+    l_token = l_login.json()["access_token"]
     l_headers = {"Authorization": f"Bearer {l_token}"}
 
     # 1. Create a Teacher 1 Room
@@ -725,3 +784,224 @@ def test_phase4_teacher_defined_activities():
     del_res = client.delete(f"/api/v1/activities/{act_a1_id}", headers=t_a_headers)
     assert del_res.status_code == 200
     assert del_res.json()["message"] == "Activity deleted successfully"
+
+# =======================================================
+# PHASE 5: UNIVERSAL MEMBER ARCHITECTURE COMPLETE SUITE
+# =======================================================
+
+def test_universal_member_architecture_complete():
+    # 1. Universal Member Signup (No role specified, defaults to MEMBER)
+    ravi_signup = client.post("/api/v1/auth/signup", json={
+        "email": "ravi.teja@guruyuktha.org",
+        "password": "Password123!",
+        "full_name": "Ravi Teja",
+        "bio": "Full-stack developer & Python enthusiast",
+        "skills": "Python, React, FastAPI, System Design"
+    })
+    assert ravi_signup.status_code == 200
+    ravi_data = ravi_signup.json()
+    assert "access_token" in ravi_data
+    ravi_user = ravi_data["user"]
+    assert ravi_user["role"] == "MEMBER"
+    assert ravi_user["guru_id"].startswith("GY-")
+    assert len(ravi_user["guru_id"]) == 11  # "GY-" + 8 chars
+    assert ravi_user["username"].startswith("ravi_teja")
+    ravi_token = ravi_data["access_token"]
+    ravi_headers = {"Authorization": f"Bearer {ravi_token}"}
+    ravi_guru_id = ravi_user["guru_id"]
+    ravi_username = ravi_user["username"]
+
+    # 2. Universal Signin via email, username, and Guru ID
+    for identifier in ["ravi.teja@guruyuktha.org", ravi_username, ravi_guru_id]:
+        login_res = client.post("/api/v1/auth/login", json={
+            "login": identifier,
+            "password": "Password123!"
+        })
+        assert login_res.status_code == 200
+        assert login_res.json()["user"]["guru_id"] == ravi_guru_id
+
+    # 3. /me endpoint returns universal profile data
+    me_res = client.get("/api/v1/auth/me", headers=ravi_headers)
+    assert me_res.status_code == 200
+    me_data = me_res.json()
+    assert me_data["user"]["guru_id"] == ravi_guru_id
+    assert me_data["user"]["username"] == ravi_username
+    assert me_data["user"]["bio"] == "Full-stack developer & Python enthusiast"
+
+    # 4. Signup second member (Ananya)
+    ananya_signup = client.post("/api/v1/auth/signup", json={
+        "email": "ananya.sharma@guruyuktha.org",
+        "password": "Password123!",
+        "full_name": "Ananya Sharma",
+        "bio": "Data Scientist & AI Researcher"
+    })
+    assert ananya_signup.status_code == 200
+    ananya_data = ananya_signup.json()
+    ananya_token = ananya_data["access_token"]
+    ananya_headers = {"Authorization": f"Bearer {ananya_token}"}
+    ananya_username = ananya_data["user"]["username"]
+    ananya_guru_id = ananya_data["user"]["guru_id"]
+
+    # 5. Member Profile Lookup
+    prof_by_uname = client.get(f"/api/v1/members/{ravi_username}")
+    assert prof_by_uname.status_code == 200
+    assert prof_by_uname.json()["guru_id"] == ravi_guru_id
+    assert prof_by_uname.json()["full_name"] == "Ravi Teja"
+
+    prof_by_gid = client.get(f"/api/v1/members/{ravi_guru_id}")
+    assert prof_by_gid.status_code == 200
+    assert prof_by_gid.json()["username"] == ravi_username
+
+    # 6. Universal Follow / Shishya System
+    # Ananya follows Ravi
+    follow_res = client.post(f"/api/v1/members/{ravi_username}/follow", headers=ananya_headers)
+    assert follow_res.status_code == 200
+    assert follow_res.json()["is_following"] is True
+    assert follow_res.json()["followers_count"] == 1
+
+    # Check Ravi's followers list
+    ravi_followers = client.get(f"/api/v1/members/{ravi_username}/followers")
+    assert ravi_followers.status_code == 200
+    assert any(f["username"] == ananya_username for f in ravi_followers.json())
+
+    # Check Ananya's following list
+    ananya_following = client.get(f"/api/v1/members/{ananya_username}/following")
+    assert ananya_following.status_code == 200
+    assert any(f["username"] == ravi_username for f in ananya_following.json())
+
+    # Cannot follow self
+    self_follow = client.post(f"/api/v1/members/{ravi_username}/follow", headers=ravi_headers)
+    assert self_follow.status_code == 400
+
+    # 7. Universal Search
+    search_res = client.get("/api/v1/search?q=Ravi")
+    assert search_res.status_code == 200
+    search_data = search_res.json()
+    assert any(g["guru_id"] == ravi_guru_id for g in search_data["members"])
+
+    # Search by Guru ID directly
+    gid_search = client.get(f"/api/v1/search?q={ravi_guru_id}")
+    assert gid_search.status_code == 200
+    assert any(g["guru_id"] == ravi_guru_id for g in gid_search.json()["members"])
+
+    # 8. Dual Context: Room Creation by Member Ravi (Teaching context)
+    room_res = client.post("/api/v1/rooms", json={
+        "name": "Python Programming Masterclass",
+        "description": "Comprehensive Python from basics to FastAPI microservices.",
+        "visibility": "PRIVATE",
+        "access_type": "PRIVATE_FREE"
+    }, headers=ravi_headers)
+    assert room_res.status_code == 201
+    room_data = room_res.json()
+    room_id = room_data["id"]
+    assert room_data["access_type"] == "PRIVATE_FREE"
+    assert room_data["owner_username"] == ravi_username
+
+    # Ravi adds a folder and resources
+    folder_res = client.post(f"/api/v1/rooms/{room_id}/folders", json={
+        "name": "Module 1: Foundations"
+    }, headers=ravi_headers)
+    assert folder_res.status_code == 201
+    folder_id = folder_res.json()["id"]
+
+    # Resource 1: Preview allowed
+    client.post(f"/api/v1/rooms/{room_id}/resources", json={
+        "title": "Course Syllabus & Overview",
+        "folder_id": folder_id,
+        "resource_type": "PDF",
+        "file_url": "https://cdn.guruyuktha.org/syllabus.pdf",
+        "visibility": "ROOM_ONLY",
+        "is_preview_allowed": True
+    }, headers=ravi_headers)
+
+    # Resource 2: Private (no preview)
+    client.post(f"/api/v1/rooms/{room_id}/resources", json={
+        "title": "Confidential Exam Paper",
+        "folder_id": folder_id,
+        "resource_type": "PDF",
+        "file_url": "https://cdn.guruyuktha.org/secret-exam.pdf",
+        "visibility": "ROOM_ONLY",
+        "is_preview_allowed": False
+    }, headers=ravi_headers)
+
+    # 9. Safe Room Preview: Non-member Ananya previews Ravi's private room
+    # Direct access to private room detail is blocked (403)
+    blocked_detail = client.get(f"/api/v1/rooms/{room_id}", headers=ananya_headers)
+    assert blocked_detail.status_code == 403
+
+    # But Safe Preview is accessible (200) without revealing confidential file URLs!
+    preview_res = client.get(f"/api/v1/rooms/{room_id}/preview")
+    assert preview_res.status_code == 200
+    preview_data = preview_res.json()
+    assert preview_data["name"] == "Python Programming Masterclass"
+    assert preview_data["owner_username"] == ravi_username
+    assert len(preview_data["folders"]) == 1
+    # Check resources in preview:
+    preview_resources = preview_data["preview_resources"]
+    assert len(preview_resources) == 2
+    # The preview-allowed resource has is_preview_allowed True
+    allowed_r = next(r for r in preview_resources if r["title"] == "Course Syllabus & Overview")
+    assert allowed_r["is_preview_allowed"] is True
+    # The confidential resource has is_preview_allowed False
+    secret_r = next(r for r in preview_resources if r["title"] == "Confidential Exam Paper")
+    assert secret_r["is_preview_allowed"] is False
+
+    # 10. Free Room Join Request Lifecycle
+    # Ananya requests to join Ravi's room
+    req_res = client.post(f"/api/v1/rooms/{room_id}/join-requests", headers=ananya_headers)
+    assert req_res.status_code == 201
+    join_req = req_res.json()
+    req_id = join_req["id"]
+    assert join_req["status"] == "PENDING"
+    assert join_req["user_username"] == ananya_username
+
+    # Duplicate request is rejected (400)
+    dup_req = client.post(f"/api/v1/rooms/{room_id}/join-requests", headers=ananya_headers)
+    assert dup_req.status_code == 400
+
+    # Ravi views pending join requests
+    requests_list = client.get(f"/api/v1/rooms/{room_id}/join-requests", headers=ravi_headers)
+    assert requests_list.status_code == 200
+    assert any(r["id"] == req_id for r in requests_list.json())
+
+    # Ananya cannot view join requests (not owner -> 403)
+    non_owner_view = client.get(f"/api/v1/rooms/{room_id}/join-requests", headers=ananya_headers)
+    assert non_owner_view.status_code == 403
+
+    # Ravi accepts Ananya's join request
+    action_res = client.post(
+        f"/api/v1/rooms/{room_id}/join-requests/{req_id}/action",
+        json={"action": "ACCEPT"},
+        headers=ravi_headers
+    )
+    assert action_res.status_code == 200
+    assert action_res.json()["status"] == "ACTIVE"
+
+    # Now Ananya CAN access the room details directly!
+    ananya_room_detail = client.get(f"/api/v1/rooms/{room_id}", headers=ananya_headers)
+    assert ananya_room_detail.status_code == 200
+    assert ananya_room_detail.json()["name"] == "Python Programming Masterclass"
+
+    # 11. Public Room Instant Join
+    # Ananya creates a public room (Teaching context for Ananya)
+    math_room = client.post("/api/v1/rooms", json={
+        "name": "Advanced Mathematics & Calculus",
+        "description": "Open study circle on calculus and linear algebra.",
+        "visibility": "PUBLIC",
+        "access_type": "PUBLIC_FREE"
+    }, headers=ananya_headers).json()
+    math_room_id = math_room["id"]
+
+    # Ravi joins Ananya's public room instantly (Learning context for Ravi)
+    ravi_join = client.post(f"/api/v1/rooms/{math_room_id}/join", headers=ravi_headers)
+    assert ravi_join.status_code == 200
+    assert ravi_join.json()["status"] == "ACTIVE"
+    assert ravi_join.json()["role"] == "MEMBER"
+
+    # Verify Ravi's Dual Context:
+    # Ravi is OWNER in "Python Programming Masterclass"
+    # Ravi is MEMBER in "Advanced Mathematics & Calculus"
+    ravi_memberships = client.get("/api/v1/rooms/my/memberships", headers=ravi_headers).json()
+    joined_room_ids = [m["room_id"] for m in ravi_memberships]
+    assert math_room_id in joined_room_ids
+

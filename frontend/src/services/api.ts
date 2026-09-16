@@ -1,6 +1,7 @@
 import type { 
   DashboardSummary, AttentionStudent, ClassInsights, Student, StudentProfile, 
-  Activity, Material, Room, RoomMembership, Folder, Resource 
+  Activity, Material, Room, RoomMembership, Folder, Resource,
+  MemberProfile, RoomPreviewOut, JoinRequestOut, UniversalSearchResult
 } from '../types';
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api/v1';
@@ -51,7 +52,7 @@ export async function fetchApi<T>(endpoint: string, options: RequestInit = {}): 
 
 export const api = {
   // Auth & Profile
-  login: (credentials: { email: string; password: string }) => fetchApi<any>('/auth/login', {
+  login: (credentials: { email?: string; login?: string; password: string }) => fetchApi<any>('/auth/login', {
     method: 'POST',
     body: JSON.stringify(credentials),
   }),
@@ -74,13 +75,29 @@ export const api = {
     body: formData,
   }),
 
-  // Rooms (Phase 2)
+  // Universal Members & Follow System
+  getMemberProfile: (identifier: string) => fetchApi<MemberProfile>(`/members/${encodeURIComponent(identifier)}`),
+  followMember: (identifier: string) => fetchApi<MemberProfile>(`/members/${encodeURIComponent(identifier)}/follow`, {
+    method: 'POST',
+  }),
+  unfollowMember: (identifier: string) => fetchApi<MemberProfile>(`/members/${encodeURIComponent(identifier)}/follow`, {
+    method: 'DELETE',
+  }),
+  getMemberFollowers: (identifier: string) => fetchApi<any[]>(`/members/${encodeURIComponent(identifier)}/followers`),
+  getMemberFollowing: (identifier: string) => fetchApi<any[]>(`/members/${encodeURIComponent(identifier)}/following`),
+  getMemberRooms: (identifier: string) => fetchApi<Room[]>(`/members/${encodeURIComponent(identifier)}/rooms`),
+
+  // Universal Search
+  searchUniversal: (query: string) => fetchApi<UniversalSearchResult>(`/search?q=${encodeURIComponent(query)}`),
+
+  // Rooms (Universal Member Architecture)
   getRooms: () => fetchApi<Room[]>('/rooms'),
-  createRoom: (data: { name: string; description?: string; visibility?: string }) => fetchApi<Room>('/rooms', {
+  createRoom: (data: { name: string; description?: string; visibility?: string; access_type?: string; price?: number; currency?: string }) => fetchApi<Room>('/rooms', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
   getRoomDetails: (id: number) => fetchApi<Room>(`/rooms/${id}`),
+  getRoomPreview: (id: number) => fetchApi<RoomPreviewOut>(`/rooms/${id}/preview`),
   updateRoom: (id: number, data: Partial<Room>) => fetchApi<Room>(`/rooms/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),
@@ -90,6 +107,20 @@ export const api = {
   }),
   getRoomMembers: (id: number) => fetchApi<RoomMembership[]>(`/rooms/${id}/members`),
   getMyMemberships: () => fetchApi<RoomMembership[]>('/rooms/my/memberships'),
+
+  // Join Requests & Instant Public Join
+  requestToJoinRoom: (roomId: number, data?: { message?: string }) => fetchApi<JoinRequestOut>(`/rooms/${roomId}/join-requests`, {
+    method: 'POST',
+    body: JSON.stringify(data || {}),
+  }),
+  getRoomJoinRequests: (roomId: number) => fetchApi<JoinRequestOut[]>(`/rooms/${roomId}/join-requests`),
+  processRoomJoinRequest: (roomId: number, membershipId: number, action: 'ACCEPT' | 'REJECT') => fetchApi<JoinRequestOut>(`/rooms/${roomId}/join-requests/${membershipId}/action`, {
+    method: 'POST',
+    body: JSON.stringify({ action }),
+  }),
+  joinPublicRoom: (roomId: number) => fetchApi<RoomMembership>(`/rooms/${roomId}/join`, {
+    method: 'POST',
+  }),
 
   // Folders & Resources (Phase 3)
   getRoomFolders: (roomId: number) => fetchApi<Folder[]>(`/rooms/${roomId}/folders`),
@@ -109,7 +140,7 @@ export const api = {
     const q = folderId ? `?folder_id=${folderId}` : '';
     return fetchApi<Resource[]>(`/rooms/${roomId}/resources${q}`);
   },
-  createResource: (roomId: number, data: { title: string; description?: string; folder_id?: number; resource_type?: string; file_url?: string; visibility?: string }) => fetchApi<Resource>(`/rooms/${roomId}/resources`, {
+  createResource: (roomId: number, data: { title: string; description?: string; folder_id?: number; resource_type?: string; file_url?: string; external_url?: string; visibility?: string; is_preview_allowed?: boolean }) => fetchApi<Resource>(`/rooms/${roomId}/resources`, {
     method: 'POST',
     body: JSON.stringify(data),
   }),

@@ -1,13 +1,13 @@
-﻿from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
 
 from app.core.database import get_db
-from app.core.security import require_teacher
+from app.core.security import require_authenticated_user, require_teacher
 from app.models.models import (
     Activity, SeminarDetail, AssignmentDetail, PblDetail, PglDetail, EvidenceFile,
-    ActivityType, ActivityStatus, PresentationMode, ParticipationLevel, Student, User, Teacher, Room
+    ActivityType, ActivityStatus, PresentationMode, ParticipationLevel, Student, User, Teacher, Room, RoomMembership
 )
 from app.schemas.schemas import (
     ActivityOut, ActivityCreate, ActivityUpdate, SeminarCreate, AssignmentCreate, PblCreate, PglCreate, GenericActivityCreate
@@ -15,19 +15,8 @@ from app.schemas.schemas import (
 
 router = APIRouter()
 
-def get_or_create_teacher(user: User, db: Session) -> Teacher:
+def get_or_create_teacher(user: User, db: Session) -> Optional[Teacher]:
     teacher = db.query(Teacher).filter(Teacher.user_id == user.id).first()
-    if not teacher:
-        teacher = Teacher(
-            user_id=user.id,
-            employee_code=f"EMP-{user.id:04d}",
-            department="Academic",
-            designation="Faculty",
-            college_name="Institution"
-        )
-        db.add(teacher)
-        db.commit()
-        db.refresh(teacher)
     return teacher
 
 def format_activity_out(act: Activity) -> ActivityOut:
@@ -38,21 +27,40 @@ def format_activity_out(act: Activity) -> ActivityOut:
     out.room_code = room_code
     return out
 
-# ================= PRIMARY TEACHER-DEFINED ACTIVITY ENDPOINTS =================
+# ================= PRIMARY TEACHER/GURU-DEFINED ACTIVITY ENDPOINTS =================
 
 @router.get("", response_model=List[ActivityOut])
 def get_activities(
     room_id: Optional[int] = Query(None),
     student_id: Optional[int] = Query(None),
     type: Optional[str] = Query(None),
-    current_user: User = Depends(require_teacher),
+    current_user: User = Depends(require_authenticated_user),
     db: Session = Depends(get_db)
 ):
     teacher = get_or_create_teacher(current_user, db)
-    query = db.query(Activity).filter(Activity.teacher_id == teacher.id)
+    teacher_id = teacher.id if teacher else -1
+
+    query = db.query(Activity)
 
     if room_id:
         query = query.filter(Activity.room_id == room_id)
+    else:
+        # Return activities created by user, associated with user's teacher record, or in user's rooms
+        user_room_ids = [r[0] for r in db.query(Room.id).filter(
+            (Room.owner_id == current_user.id) | (Room.teacher_id == teacher_id)
+        ).all()]
+        joined_room_ids = [m[0] for m in db.query(RoomMembership.room_id).filter(
+            RoomMembership.user_id == current_user.id,
+            RoomMembership.status == "ACTIVE"
+        ).all()]
+        all_room_ids = list(set(user_room_ids + joined_room_ids))
+
+        query = query.filter(
+            (Activity.created_by_user_id == current_user.id) |
+            (Activity.teacher_id == teacher_id) |
+            (Activity.room_id.in_(all_room_ids))
+        )
+
     if student_id:
         query = query.filter(Activity.student_id == student_id)
     if type and type.upper() != "ALL":
@@ -64,22 +72,24 @@ def get_activities(
 @router.post("", response_model=ActivityOut, status_code=status.HTTP_201_CREATED)
 def create_activity(
     act_in: ActivityCreate,
-    current_user: User = Depends(require_teacher),
+    current_user: User = Depends(require_authenticated_user),
     db: Session = Depends(get_db)
 ):
     teacher = get_or_create_teacher(current_user, db)
+    teacher_id = teacher.id if teacher else None
 
     # Validate room ownership if room_id is passed
-    room = None
     if act_in.room_id:
         room = db.query(Room).filter(Room.id == act_in.room_id).first()
         if not room:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Room not found")
-        if room.teacher_id != teacher.id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access forbidden: You cannot attach activities to another teacher's room.")
+        is_owner = (room.owner_id == current_user.id) or (room.teacher and room.teacher.user_id == current_user.id)
+        if not is_owner:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access forbidden: You can only create activities in rooms you own.")
 
     activity = Activity(
-        teacher_id=teacher.id,
+        created_by_user_id=current_user.id,
+        teacher_id=teacher_id,
         room_id=act_in.room_id,
         student_id=act_in.student_id,
         type=(act_in.type or "ACTIVITY").upper(),
@@ -101,22 +111,26 @@ def create_activity(
 def update_activity(
     activity_id: int,
     act_in: ActivityUpdate,
-    current_user: User = Depends(require_teacher),
+    current_user: User = Depends(require_authenticated_user),
     db: Session = Depends(get_db)
 ):
-    teacher = get_or_create_teacher(current_user, db)
     activity = db.query(Activity).filter(Activity.id == activity_id).first()
     if not activity:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Activity not found")
 
-    if activity.teacher_id != teacher.id:
+    teacher = get_or_create_teacher(current_user, db)
+    is_owner = (activity.created_by_user_id == current_user.id) or \
+               (teacher and activity.teacher_id == teacher.id) or \
+               (activity.room and (activity.room.owner_id == current_user.id or (activity.room.teacher and activity.room.teacher.user_id == current_user.id)))
+
+    if not is_owner:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access forbidden: You do not own this activity.")
 
     if act_in.room_id is not None:
         if act_in.room_id > 0:
             room = db.query(Room).filter(Room.id == act_in.room_id).first()
-            if not room or room.teacher_id != teacher.id:
-                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid room_id: You do not own this room.")
+            if not room:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Room not found")
             activity.room_id = room.id
         else:
             activity.room_id = None
@@ -145,15 +159,19 @@ def update_activity(
 @router.delete("/{activity_id}")
 def delete_activity(
     activity_id: int,
-    current_user: User = Depends(require_teacher),
+    current_user: User = Depends(require_authenticated_user),
     db: Session = Depends(get_db)
 ):
-    teacher = get_or_create_teacher(current_user, db)
     activity = db.query(Activity).filter(Activity.id == activity_id).first()
     if not activity:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Activity not found")
 
-    if activity.teacher_id != teacher.id:
+    teacher = get_or_create_teacher(current_user, db)
+    is_owner = (activity.created_by_user_id == current_user.id) or \
+               (teacher and activity.teacher_id == teacher.id) or \
+               (activity.room and (activity.room.owner_id == current_user.id or (activity.room.teacher and activity.room.teacher.user_id == current_user.id)))
+
+    if not is_owner:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access forbidden: You do not own this activity.")
 
     db.delete(activity)

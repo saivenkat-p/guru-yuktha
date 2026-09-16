@@ -1,4 +1,4 @@
-export type UserRole = 'TEACHER' | 'LEARNER' | 'STUDENT' | 'ADMIN';
+export type UserRole = 'MEMBER' | 'TEACHER' | 'LEARNER' | 'STUDENT' | 'ADMIN';
 
 export interface User {
   id: number;
@@ -6,6 +6,34 @@ export interface User {
   full_name: string;
   role: UserRole;
   avatar_url?: string;
+  guru_id?: string;
+  username?: string;
+  bio?: string;
+  skills?: string;
+  is_guru_eligible?: boolean;
+  followers_count?: number;
+  following_count?: number;
+  rooms_owned_count?: number;
+  rooms_joined_count?: number;
+  created_at?: string;
+}
+
+export interface MemberProfile {
+  id: number;
+  guru_id: string;
+  username: string;
+  full_name: string;
+  email?: string;
+  avatar_url?: string;
+  bio?: string;
+  skills?: string;
+  followers_count: number;
+  following_count: number;
+  rooms_owned_count: number;
+  rooms_joined_count: number;
+  is_guru_eligible: boolean;
+  is_following: boolean;
+  created_at: string;
 }
 
 export interface TeacherProfile {
@@ -45,13 +73,23 @@ export interface AuthMeResponse {
 
 export interface Room {
   id: number;
-  teacher_id: number;
+  owner_id?: number;
+  teacher_id?: number;
   name: string;
   description?: string;
   code: string;
   visibility: 'PRIVATE' | 'PUBLIC';
+  access_type?: 'PUBLIC_FREE' | 'PRIVATE_FREE' | 'PRIVATE_PAID';
+  price?: number;
+  currency?: string;
   is_active: boolean;
   active_members_count: number;
+  owner_name?: string;
+  owner_guru_id?: string;
+  owner_username?: string;
+  owner_avatar_url?: string;
+  user_role?: 'OWNER' | 'MODERATOR' | 'MEMBER';
+  membership_status?: 'ACTIVE' | 'PENDING' | 'REJECTED';
   created_at: string;
   updated_at?: string;
 }
@@ -89,9 +127,11 @@ export interface Resource {
   description?: string;
   resource_type: 'PDF' | 'PPT' | 'DOC' | 'VIDEO' | 'LINK' | 'IMAGE' | 'OTHER';
   file_url?: string;
+  external_url?: string;
   mime_type?: string;
   file_size?: string;
   visibility: 'PUBLIC' | 'ROOM_ONLY';
+  is_preview_allowed?: boolean;
   is_active: boolean;
   created_at: string;
   updated_at?: string;
@@ -99,6 +139,87 @@ export interface Resource {
   room_name?: string;
   room_code?: string;
   teacher_name?: string;
+}
+
+export interface RoomPreviewFolderOut {
+  id: number;
+  name: string;
+  resources_count: number;
+}
+
+export interface RoomPreviewResourceOut {
+  id: number;
+  title: string;
+  resource_type: string;
+  is_preview_allowed: boolean;
+}
+
+export interface RoomPreviewOut {
+  id: number;
+  code: string;
+  name: string;
+  description?: string;
+  visibility: 'PRIVATE' | 'PUBLIC';
+  access_type: 'PUBLIC_FREE' | 'PRIVATE_FREE' | 'PRIVATE_PAID';
+  price: number;
+  currency: string;
+  owner_name: string;
+  owner_guru_id: string;
+  owner_username?: string;
+  owner_avatar_url?: string;
+  owner_followers_count: number;
+  active_members_count: number;
+  total_resources_count: number;
+  folders: RoomPreviewFolderOut[];
+  preview_resources: RoomPreviewResourceOut[];
+  user_membership_status?: string | null;
+}
+
+export interface JoinRequestOut {
+  id: number;
+  room_id: number;
+  room_name: string;
+  user_id: number;
+  user_name: string;
+  user_guru_id: string;
+  user_username?: string;
+  user_avatar_url?: string;
+  status: 'PENDING' | 'ACTIVE' | 'REJECTED';
+  created_at: string;
+}
+
+export interface UniversalSearchResult {
+  query: string;
+  members: {
+    id: number;
+    guru_id: string;
+    username: string;
+    full_name: string;
+    avatar_url?: string;
+    bio?: string;
+    followers_count: number;
+    rooms_owned_count: number;
+  }[];
+  rooms: {
+    id: number;
+    code: string;
+    name: string;
+    description?: string;
+    access_type: 'PUBLIC_FREE' | 'PRIVATE_FREE' | 'PRIVATE_PAID';
+    price: number;
+    owner_name: string;
+    owner_guru_id?: string;
+  }[];
+  resources: {
+    id: number;
+    room_id: number;
+    room_name: string;
+    title: string;
+    description?: string;
+    resource_type: string;
+    file_url?: string;
+    external_url?: string;
+  }[];
 }
 
 export type ActivityType = 'SEMINAR' | 'ASSIGNMENT' | 'PBL' | 'PGL' | 'OTHER' | 'ASSESSMENT';

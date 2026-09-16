@@ -66,13 +66,33 @@ class User(Base):
     email = Column(String(255), unique=True, index=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
     full_name = Column(String(255), nullable=False)
-    role = Column(String(50), default=UserRole.TEACHER)
+    role = Column(String(50), default="MEMBER")
     avatar_url = Column(String(500), nullable=True)
+    guru_id = Column(String(50), unique=True, index=True, nullable=True)
+    username = Column(String(100), unique=True, index=True, nullable=True)
+    bio = Column(Text, nullable=True)
+    skills = Column(Text, nullable=True)
+    is_guru_eligible = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     teacher_profile = relationship("Teacher", back_populates="user", uselist=False)
     learner_profile = relationship("Learner", back_populates="user", uselist=False)
     room_memberships = relationship("RoomMembership", back_populates="user", cascade="all, delete-orphan")
+    rooms_owned = relationship("Room", foreign_keys="Room.owner_id", back_populates="owner_user", cascade="all, delete-orphan")
+    following = relationship("Follow", foreign_keys="Follow.follower_id", back_populates="follower", cascade="all, delete-orphan")
+    followers = relationship("Follow", foreign_keys="Follow.following_id", back_populates="following_user", cascade="all, delete-orphan")
+
+# Follow / Shishya model
+class Follow(Base):
+    __tablename__ = "follows"
+
+    id = Column(Integer, primary_key=True, index=True)
+    follower_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    following_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    follower = relationship("User", foreign_keys=[follower_id], back_populates="following")
+    following_user = relationship("User", foreign_keys=[following_id], back_populates="followers")
 
 # Teacher model
 class Teacher(Base):
@@ -87,7 +107,7 @@ class Teacher(Base):
 
     user = relationship("User", back_populates="teacher_profile")
     classes = relationship("Class", back_populates="teacher")
-    rooms = relationship("Room", back_populates="owner", cascade="all, delete-orphan")
+    rooms = relationship("Room", back_populates="owner", foreign_keys="Room.teacher_id")
     activities = relationship("Activity", back_populates="teacher")
 
 # Learner model (for independently registered learners)
@@ -113,16 +133,22 @@ class Room(Base):
     __tablename__ = "rooms"
 
     id = Column(Integer, primary_key=True, index=True)
-    teacher_id = Column(Integer, ForeignKey("teachers.id"), nullable=False, index=True)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    teacher_id = Column(Integer, ForeignKey("teachers.id"), nullable=True, index=True)
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     code = Column(String(50), unique=True, index=True, nullable=False)
-    visibility = Column(String(50), default="PRIVATE")  # PRIVATE, PUBLIC
+    visibility = Column(String(50), default="PUBLIC")  # PRIVATE, PUBLIC
+    access_type = Column(String(50), default="PUBLIC_FREE")  # PUBLIC_FREE, PRIVATE_FREE, PRIVATE_PAID
+    price = Column(Float, default=0.0)
+    currency = Column(String(10), default="INR")
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    owner = relationship("Teacher", back_populates="rooms")
+    owner_user = relationship("User", foreign_keys=[owner_id], back_populates="rooms_owned")
+    owner = relationship("Teacher", back_populates="rooms", foreign_keys=[teacher_id])
+    teacher = relationship("Teacher", foreign_keys=[teacher_id], viewonly=True)
     memberships = relationship("RoomMembership", back_populates="room", cascade="all, delete-orphan")
     folders = relationship("Folder", back_populates="room", cascade="all, delete-orphan")
     resources = relationship("Resource", back_populates="room", cascade="all, delete-orphan")
@@ -136,8 +162,9 @@ class RoomMembership(Base):
     room_id = Column(Integer, ForeignKey("rooms.id"), nullable=False, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     learner_id = Column(Integer, ForeignKey("learners.id"), nullable=True, index=True)
-    role = Column(String(50), default="MEMBER")
-    status = Column(String(50), default="ACTIVE")  # ACTIVE, PENDING, REJECTED, REMOVED, ARCHIVED
+    role = Column(String(50), default="MEMBER")  # OWNER, MODERATOR, MEMBER
+    status = Column(String(50), default="ACTIVE")  # ACTIVE, PENDING, REJECTED, CANCELLED, ARCHIVED
+    access_source = Column(String(50), default="FREE_JOIN")  # FREE_JOIN, REQUEST_ACCEPTED, INVITATION, PAID_PURCHASE, OWNER
     joined_at = Column(DateTime, default=datetime.utcnow)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -176,6 +203,8 @@ class Resource(Base):
     mime_type = Column(String(100), nullable=True)
     file_size = Column(String(50), nullable=True)
     visibility = Column(String(50), default="ROOM_ONLY")  # PUBLIC, ROOM_ONLY
+    is_preview_allowed = Column(Boolean, default=False)
+    external_url = Column(String(1000), nullable=True)
     uploaded_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -238,6 +267,7 @@ class Activity(Base):
     __tablename__ = "activities"
 
     id = Column(Integer, primary_key=True, index=True)
+    created_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     teacher_id = Column(Integer, ForeignKey("teachers.id"), nullable=True, index=True)
     room_id = Column(Integer, ForeignKey("rooms.id"), nullable=True, index=True)
     student_id = Column(Integer, ForeignKey("students.id"), nullable=True)
@@ -254,7 +284,8 @@ class Activity(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    teacher = relationship("Teacher", back_populates="activities")
+    creator_user = relationship("User", foreign_keys=[created_by_user_id])
+    teacher = relationship("Teacher", back_populates="activities", foreign_keys=[teacher_id])
     room = relationship("Room", back_populates="activities")
     student = relationship("Student", back_populates="activities")
     class_obj = relationship("Class", back_populates="activities")

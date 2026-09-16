@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { GraduationCap, Mail, Lock, User, Building, BookOpen, BadgeCheck, AlertCircle, ArrowRight } from 'lucide-react';
+import { GraduationCap, Mail, Lock, User, Sparkles, AlertCircle, ArrowRight, BookOpen, Compass, CheckCircle2 } from 'lucide-react';
 import { api, setAuthToken } from '../services/api';
 
 interface LoginProps {
@@ -8,37 +8,30 @@ interface LoginProps {
 
 export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
-  const [role, setRole] = useState<'TEACHER' | 'LEARNER'>('TEACHER');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Sign In Form
-  const [signInEmail, setSignInEmail] = useState('');
+  const [signInIdentifier, setSignInIdentifier] = useState('');
   const [signInPassword, setSignInPassword] = useState('');
 
-  // Sign Up Form (Common)
+  // Sign Up Form (Universal Member)
   const [signUpFullName, setSignUpFullName] = useState('');
   const [signUpEmail, setSignUpEmail] = useState('');
   const [signUpPassword, setSignUpPassword] = useState('');
-  
-  // Teacher-specific
-  const [signUpDepartment, setSignUpDepartment] = useState('');
-  const [signUpDesignation, setSignUpDesignation] = useState('');
-  const [signUpCollege, setSignUpCollege] = useState('');
-  const [signUpEmpCode, setSignUpEmpCode] = useState('');
-
-  // Learner-specific
-  const [signUpRollNumber, setSignUpRollNumber] = useState('');
-  const [signUpCourse, setSignUpCourse] = useState('');
-  const [signUpSemester, setSignUpSemester] = useState('');
-  const [signUpPhone, setSignUpPhone] = useState('');
+  const [signUpBio, setSignUpBio] = useState('');
+  const [signUpSkills, setSignUpSkills] = useState('');
+  const [signUpInstitution, setSignUpInstitution] = useState('');
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
     try {
-      const res = await api.login({ email: signInEmail.trim(), password: signInPassword });
+      const res = await api.login({
+        login: signInIdentifier.trim(),
+        password: signInPassword,
+      });
       if (res.access_token) {
         setAuthToken(res.access_token);
         onAuthSuccess(res.access_token, res.user);
@@ -46,7 +39,7 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
         setError('Login failed: Token not returned.');
       }
     } catch (err: any) {
-      setError(err.message || 'Invalid email or password');
+      setError(err.message || 'Invalid email, username, Guru ID, or password');
     } finally {
       setLoading(false);
     }
@@ -57,26 +50,15 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
     setError(null);
     setLoading(true);
     try {
-      const payload: any = {
+      const payload = {
         full_name: signUpFullName.trim(),
         email: signUpEmail.trim(),
         password: signUpPassword,
-        role: role,
+        role: 'MEMBER',
+        bio: signUpBio.trim() || undefined,
+        skills: signUpSkills.trim() || undefined,
+        college_name: signUpInstitution.trim() || undefined,
       };
-
-      if (role === 'TEACHER') {
-        payload.department = signUpDepartment.trim() || undefined;
-        payload.designation = signUpDesignation.trim() || undefined;
-        payload.college_name = signUpCollege.trim() || undefined;
-        payload.employee_code = signUpEmpCode.trim() || undefined;
-      } else {
-        payload.roll_number = signUpRollNumber.trim() || undefined;
-        payload.course = signUpCourse.trim() || undefined;
-        payload.semester = signUpSemester.trim() || undefined;
-        payload.department = signUpDepartment.trim() || undefined;
-        payload.college_name = signUpCollege.trim() || undefined;
-        payload.phone = signUpPhone.trim() || undefined;
-      }
 
       const res = await api.signup(payload);
       if (res.access_token) {
@@ -91,20 +73,21 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">
       {/* Ambient background glow elements */}
-      <div className="absolute -top-32 -left-32 w-96 h-96 bg-indigo-600/30 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-purple-600/30 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -top-32 -left-32 w-96 h-96 bg-indigo-600/25 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-purple-600/25 rounded-full blur-3xl pointer-events-none" />
 
       <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100 relative z-10">
         {/* Header section */}
-        <div className="bg-indigo-600 p-8 text-center text-white relative">
-          <div className="w-16 h-16 bg-white/10 rounded-2xl mx-auto flex items-center justify-center backdrop-blur-md mb-3 border border-white/20">
+        <div className="bg-gradient-to-r from-indigo-700 via-indigo-600 to-purple-700 p-8 text-center text-white relative">
+          <div className="w-16 h-16 bg-white/10 rounded-2xl mx-auto flex items-center justify-center backdrop-blur-md mb-3 border border-white/20 shadow-lg">
             <GraduationCap className="w-9 h-9 text-white" />
           </div>
           <h1 className="text-2xl font-black tracking-tight">Guru Yuktha</h1>
-          <p className="text-xs text-indigo-100 mt-1 font-medium">
-            Academic Performance &amp; Outcome Tracking System
+          <p className="text-xs text-indigo-100 mt-1 font-medium flex items-center justify-center space-x-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+            <span>Connect • Learn • Teach • Grow • Earn</span>
           </p>
         </div>
 
@@ -112,7 +95,7 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
         <div className="flex bg-slate-100 p-1.5 m-6 mb-2 rounded-2xl">
           <button
             onClick={() => { setMode('signin'); setError(null); }}
-            className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all ${
+            className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
               mode === 'signin'
                 ? 'bg-white text-indigo-700 shadow-xs'
                 : 'text-slate-500 hover:text-slate-800'
@@ -122,7 +105,7 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
           </button>
           <button
             onClick={() => { setMode('signup'); setError(null); }}
-            className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all ${
+            className={`flex-1 py-2.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
               mode === 'signup'
                 ? 'bg-white text-indigo-700 shadow-xs'
                 : 'text-slate-500 hover:text-slate-800'
@@ -145,19 +128,22 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
           <form onSubmit={handleSignIn} className="p-6 space-y-4">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Email Address
+                Email, Username (@username), or Guru ID
               </label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                 <input
-                  type="email"
+                  type="text"
                   required
-                  value={signInEmail}
-                  onChange={(e) => setSignInEmail(e.target.value)}
-                  placeholder="name@institution.edu"
+                  value={signInIdentifier}
+                  onChange={(e) => setSignInIdentifier(e.target.value)}
+                  placeholder="name@mail.com, @username, or GY-XXXXXXXX"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Sign in with your email, unique @username, or permanent Guru ID.
+              </p>
             </div>
 
             <div>
@@ -167,7 +153,7 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
                 </label>
                 <button
                   type="button"
-                  onClick={() => alert('Password reset is managed by your institution administrator or academic IT support.')}
+                  onClick={() => alert('Password reset is managed by academic IT support or platform administrator.')}
                   className="text-[11px] text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer"
                 >
                   Forgot Password?
@@ -202,39 +188,17 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
             </button>
           </form>
         ) : (
-          /* Sign Up View */
+          /* Sign Up View (Universal Member) */
           <form onSubmit={handleSignUp} className="p-6 space-y-3.5 max-h-[65vh] overflow-y-auto pr-2">
-            {/* Account Type Selector */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                I am registering as:
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setRole('TEACHER')}
-                  className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center space-x-2 cursor-pointer ${
-                    role === 'TEACHER'
-                      ? 'border-indigo-600 bg-indigo-50 text-indigo-700 ring-2 ring-indigo-200'
-                      : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
-                  }`}
-                >
-                  <Building className="w-4 h-4" />
-                  <span>Teacher</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRole('LEARNER')}
-                  className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center space-x-2 cursor-pointer ${
-                    role === 'LEARNER'
-                      ? 'border-indigo-600 bg-indigo-50 text-indigo-700 ring-2 ring-indigo-200'
-                      : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
-                  }`}
-                >
-                  <User className="w-4 h-4" />
-                  <span>Learner</span>
-                </button>
+            {/* Universal Member Notice */}
+            <div className="p-3.5 bg-indigo-50/70 border border-indigo-100 rounded-2xl space-y-1">
+              <div className="flex items-center space-x-1.5 text-xs font-bold text-indigo-900">
+                <CheckCircle2 className="w-4 h-4 text-indigo-600" />
+                <span>One Universal Account</span>
               </div>
+              <p className="text-[11px] text-indigo-700 leading-relaxed">
+                You will receive a permanent Guru ID (<span className="font-mono font-bold">GY-XXXXXXXX</span>) and <span className="font-mono font-bold">@username</span>. You can both teach (own rooms, share knowledge) and learn (join rooms, discover gurus).
+              </p>
             </div>
 
             <div>
@@ -248,7 +212,7 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
                   required
                   value={signUpFullName}
                   onChange={(e) => setSignUpFullName(e.target.value)}
-                  placeholder={role === 'TEACHER' ? 'e.g. Dr. Rajesh Sharma' : 'e.g. Rahul Verma'}
+                  placeholder="e.g. Ravi Teja or Dr. Rajesh Sharma"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
@@ -265,7 +229,7 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
                   required
                   value={signUpEmail}
                   onChange={(e) => setSignUpEmail(e.target.value)}
-                  placeholder={role === 'TEACHER' ? 'faculty@institution.edu' : 'student@college.edu'}
+                  placeholder="you@domain.com"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
@@ -289,157 +253,68 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
               </div>
             </div>
 
-            {/* Role-Specific Fields */}
-            {role === 'TEACHER' ? (
-              <>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Department
-                    </label>
-                    <div className="relative">
-                      <BookOpen className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                      <input
-                        type="text"
-                        value={signUpDepartment}
-                        onChange={(e) => setSignUpDepartment(e.target.value)}
-                        placeholder="e.g. English"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      />
-                    </div>
-                  </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Bio / About You (Optional)
+              </label>
+              <textarea
+                rows={2}
+                value={signUpBio}
+                onChange={(e) => setSignUpBio(e.target.value)}
+                placeholder="Briefly describe your areas of interest, teaching topics, or learning goals..."
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Designation
-                    </label>
-                    <div className="relative">
-                      <BadgeCheck className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                      <input
-                        type="text"
-                        value={signUpDesignation}
-                        onChange={(e) => setSignUpDesignation(e.target.value)}
-                        placeholder="e.g. Lecturer"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      />
-                    </div>
-                  </div>
-                </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Skills &amp; Knowledge Topics (Optional)
+              </label>
+              <input
+                type="text"
+                value={signUpSkills}
+                onChange={(e) => setSignUpSkills(e.target.value)}
+                placeholder="e.g. Python, Calculus, English Literature, Web Dev"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    College / Institution Name
-                  </label>
-                  <div className="relative">
-                    <Building className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                    <input
-                      type="text"
-                      value={signUpCollege}
-                      onChange={(e) => setSignUpCollege(e.target.value)}
-                      placeholder="e.g. Government Degree College"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    />
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Course / Program
-                    </label>
-                    <div className="relative">
-                      <BookOpen className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                      <input
-                        type="text"
-                        value={signUpCourse}
-                        onChange={(e) => setSignUpCourse(e.target.value)}
-                        placeholder="e.g. B.A. / B.Sc"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Semester / Year
-                    </label>
-                    <div className="relative">
-                      <BadgeCheck className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                      <input
-                        type="text"
-                        value={signUpSemester}
-                        onChange={(e) => setSignUpSemester(e.target.value)}
-                        placeholder="e.g. II Sem"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Roll Number (Optional)
-                    </label>
-                    <input
-                      type="text"
-                      value={signUpRollNumber}
-                      onChange={(e) => setSignUpRollNumber(e.target.value)}
-                      placeholder="e.g. 2026-ENG-042"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Phone (Optional)
-                    </label>
-                    <input
-                      type="tel"
-                      value={signUpPhone}
-                      onChange={(e) => setSignUpPhone(e.target.value)}
-                      placeholder="e.g. +91 98765..."
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    College / Institution Name
-                  </label>
-                  <div className="relative">
-                    <Building className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                    <input
-                      type="text"
-                      value={signUpCollege}
-                      onChange={(e) => setSignUpCollege(e.target.value)}
-                      placeholder="e.g. Government Degree College"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    />
-                  </div>
-                </div>
-              </>
-            )}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Institution / Organization (Optional)
+              </label>
+              <input
+                type="text"
+                value={signUpInstitution}
+                onChange={(e) => setSignUpInstitution(e.target.value)}
+                placeholder="e.g. Government Degree College or Independent"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl transition-colors shadow-md hover:shadow-lg flex items-center justify-center space-x-2 disabled:opacity-50 mt-4 cursor-pointer"
+              className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold text-sm rounded-xl transition-all shadow-md flex items-center justify-center space-x-2 disabled:opacity-50 mt-4 cursor-pointer"
             >
               {loading ? (
-                <span>Creating {role === 'TEACHER' ? 'Teacher' : 'Learner'} Account...</span>
+                <span>Creating Member Account...</span>
               ) : (
                 <>
-                  <span>Create {role === 'TEACHER' ? 'Teacher' : 'Learner'} Account</span>
+                  <span>Join as Member</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
             </button>
           </form>
         )}
+
+        {/* Footer */}
+        <div className="p-4 bg-slate-50 text-center border-t border-slate-100">
+          <p className="text-[11px] text-slate-400 font-medium">
+            Guru Yuktha • Universal Academic &amp; Knowledge Platform
+          </p>
+        </div>
       </div>
     </div>
   );

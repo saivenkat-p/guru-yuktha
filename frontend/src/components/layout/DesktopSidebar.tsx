@@ -1,12 +1,14 @@
-import React from 'react';
-import { Home, Users, BookOpen, BarChart3, Plus, GraduationCap, FileText, User } from 'lucide-react';
+import React, { useState } from 'react';
+import { Home, Users, BookOpen, BarChart3, Plus, GraduationCap, FileText, User, Compass, Copy, Check } from 'lucide-react';
 
 interface DesktopSidebarProps {
-  activeTab: 'dashboard' | 'rooms' | 'students' | 'materials' | 'reports';
+  activeTab: 'dashboard' | 'rooms' | 'discover' | 'students' | 'materials' | 'reports';
   teacherName?: string;
   designation?: string;
+  guruId?: string;
+  username?: string;
   avatarUrl?: string;
-  onSelectTab: (tab: 'dashboard' | 'rooms' | 'students' | 'materials' | 'reports') => void;
+  onSelectTab: (tab: 'dashboard' | 'rooms' | 'discover' | 'students' | 'materials' | 'reports') => void;
   onOpenQuickAdd: () => void;
   onOpenProfile?: () => void;
 }
@@ -14,19 +16,32 @@ interface DesktopSidebarProps {
 export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
   activeTab,
   teacherName = "Md. Shahazadi Begum",
-  designation = "Lecturer in English",
+  designation = "Universal Member",
+  guruId,
+  username,
   avatarUrl = "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80",
   onSelectTab,
   onOpenQuickAdd,
   onOpenProfile,
 }) => {
+  const [copied, setCopied] = useState(false);
+
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
-    { id: 'rooms', label: 'My Rooms', icon: BookOpen },
+    { id: 'discover', label: 'Discover & Network', icon: Compass },
+    { id: 'rooms', label: 'Universal Rooms', icon: BookOpen },
     { id: 'students', label: 'Tracked Students', icon: Users },
     { id: 'materials', label: 'Materials', icon: FileText },
     { id: 'reports', label: 'Reports', icon: BarChart3 },
   ];
+
+  const handleCopyGuruId = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!guruId) return;
+    navigator.clipboard.writeText(guruId);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <aside className="hidden md:flex flex-col w-64 bg-indigo-900 text-white border-r border-indigo-800/80 min-h-screen p-5 shrink-0 justify-between">
@@ -38,7 +53,7 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
           </div>
           <div>
             <h1 className="text-lg font-bold text-white tracking-tight leading-none">Guru Yuktha</h1>
-            <p className="text-[10px] text-indigo-300 font-medium tracking-wide mt-1 uppercase">Academic System</p>
+            <p className="text-[10px] text-indigo-300 font-medium tracking-wide mt-1 uppercase">Universal Academic</p>
           </div>
         </div>
 
@@ -74,23 +89,42 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
         </nav>
       </div>
 
-      {/* Lecturer Profile Footer */}
+      {/* Member Profile Footer with Guru ID */}
       <div
         onClick={onOpenProfile}
-        className="bg-indigo-950/60 p-3.5 rounded-2xl border border-indigo-800/50 flex items-center justify-between cursor-pointer hover:bg-indigo-950 transition-colors group"
+        className="bg-indigo-950/60 p-3.5 rounded-2xl border border-indigo-800/50 flex flex-col space-y-2 cursor-pointer hover:bg-indigo-950 transition-colors group"
       >
-        <div className="flex items-center space-x-3 min-w-0">
-          <img
-            src={avatarUrl}
-            alt={teacherName}
-            className="w-9 h-9 rounded-full border border-indigo-400 object-cover shrink-0 group-hover:scale-105 transition-transform"
-          />
-          <div className="min-w-0">
-            <h4 className="text-xs font-bold text-white truncate group-hover:underline">{teacherName}</h4>
-            <p className="text-[10px] text-indigo-300 truncate">{designation}</p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3 min-w-0">
+            <img
+              src={avatarUrl}
+              alt={teacherName}
+              className="w-9 h-9 rounded-full border border-indigo-400 object-cover shrink-0 group-hover:scale-105 transition-transform"
+            />
+            <div className="min-w-0">
+              <h4 className="text-xs font-bold text-white truncate group-hover:underline">{teacherName}</h4>
+              <p className="text-[10px] text-indigo-300 truncate">{username ? `@${username}` : designation}</p>
+            </div>
           </div>
+          <User className="w-4 h-4 text-indigo-300 group-hover:text-white shrink-0" />
         </div>
-        <User className="w-4 h-4 text-indigo-300 group-hover:text-white" />
+
+        {/* Guru ID Badge with Copy */}
+        {guruId && (
+          <div
+            onClick={handleCopyGuruId}
+            className="flex items-center justify-between bg-indigo-900/90 hover:bg-indigo-800/90 px-2.5 py-1.5 rounded-xl border border-indigo-700/60 transition-colors"
+            title="Click to copy your Universal Guru ID"
+          >
+            <div className="flex items-center space-x-1.5">
+              <span className="text-[9px] uppercase tracking-wider text-indigo-300 font-bold">ID:</span>
+              <span className="text-[10px] font-mono font-bold text-emerald-300 tracking-wide">{guruId}</span>
+            </div>
+            <div className="text-indigo-300 hover:text-white">
+              {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+            </div>
+          </div>
+        )}
       </div>
     </aside>
   );

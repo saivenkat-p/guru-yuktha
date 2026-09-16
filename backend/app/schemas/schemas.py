@@ -12,20 +12,23 @@ class TokenPayload(BaseModel):
     sub: Optional[int] = None
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    email: Optional[str] = None
+    login: Optional[str] = None  # email or username
     password: str
 
 class SignUpRequest(BaseModel):
     full_name: str
     email: EmailStr
     password: str
-    role: str = "TEACHER"
-    # Teacher fields
+    username: Optional[str] = None
+    bio: Optional[str] = None
+    skills: Optional[str] = None
+    role: Optional[str] = "MEMBER"
+    # Legacy fields
     designation: Optional[str] = None
     department: Optional[str] = None
     college_name: Optional[str] = None
     employee_code: Optional[str] = None
-    # Learner fields
     roll_number: Optional[str] = None
     course: Optional[str] = None
     semester: Optional[str] = None
@@ -36,8 +39,35 @@ class UserOut(BaseModel):
     id: int
     email: str
     full_name: str
-    role: str
+    role: str = "MEMBER"
     avatar_url: Optional[str] = None
+    guru_id: Optional[str] = None
+    username: Optional[str] = None
+    bio: Optional[str] = None
+    skills: Optional[str] = None
+    is_guru_eligible: bool = False
+    followers_count: int = 0
+    following_count: int = 0
+    rooms_owned_count: int = 0
+    rooms_joined_count: int = 0
+
+    class Config:
+        from_attributes = True
+
+class MemberProfileOut(BaseModel):
+    id: int
+    guru_id: str
+    username: str
+    full_name: str
+    avatar_url: Optional[str] = None
+    bio: Optional[str] = None
+    skills: Optional[str] = None
+    followers_count: int = 0
+    following_count: int = 0
+    rooms_owned_count: int = 0
+    is_guru_eligible: bool = False
+    is_following: bool = False
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -72,6 +102,8 @@ class LearnerOut(BaseModel):
 class AuthMeResponse(BaseModel):
     user: UserOut
     role: str
+    guru_id: Optional[str] = None
+    username: Optional[str] = None
     teacher: Optional[TeacherOut] = None
     learner: Optional[LearnerOut] = None
 
@@ -87,6 +119,9 @@ class AuthMeResponse(BaseModel):
 
 class TeacherProfileUpdate(BaseModel):
     full_name: Optional[str] = None
+    username: Optional[str] = None
+    bio: Optional[str] = None
+    skills: Optional[str] = None
     designation: Optional[str] = None
     department: Optional[str] = None
     college_name: Optional[str] = None
@@ -105,32 +140,94 @@ class LearnerProfileUpdate(BaseModel):
     email: Optional[str] = None
     avatar_url: Optional[str] = None
 
-# Room & Membership Schemas (Phase 2)
+# Room & Membership Schemas (Phase 2 & Universal Member)
 class RoomCreate(BaseModel):
     name: str
     description: Optional[str] = None
-    visibility: Optional[str] = "PRIVATE" # PRIVATE or PUBLIC
+    visibility: Optional[str] = "PUBLIC" # PRIVATE or PUBLIC
+    access_type: Optional[str] = "PUBLIC_FREE" # PUBLIC_FREE, PRIVATE_FREE, PRIVATE_PAID
+    price: Optional[float] = 0.0
+    currency: Optional[str] = "INR"
 
 class RoomUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     visibility: Optional[str] = None
+    access_type: Optional[str] = None
+    price: Optional[float] = None
+    currency: Optional[str] = None
     is_active: Optional[bool] = None
 
 class RoomOut(BaseModel):
     id: int
-    teacher_id: int
+    owner_id: Optional[int] = None
+    teacher_id: Optional[int] = None
     name: str
     description: Optional[str] = None
     code: str
-    visibility: str = "PRIVATE"
+    visibility: str = "PUBLIC"
+    access_type: str = "PUBLIC_FREE"
+    price: float = 0.0
+    currency: str = "INR"
     is_active: bool = True
     active_members_count: int = 0
     created_at: datetime
     updated_at: Optional[datetime] = None
+    owner_name: Optional[str] = None
+    owner_guru_id: Optional[str] = None
+    owner_username: Optional[str] = None
+    owner_avatar_url: Optional[str] = None
+    user_role: Optional[str] = None # OWNER, MODERATOR, MEMBER
+    membership_status: Optional[str] = None # ACTIVE, PENDING
 
     class Config:
         from_attributes = True
+
+class RoomPreviewFolderOut(BaseModel):
+    id: int
+    name: str
+    resources_count: int = 0
+
+class RoomPreviewResourceOut(BaseModel):
+    id: int
+    title: str
+    resource_type: str
+    is_preview_allowed: bool = False
+
+class RoomPreviewOut(BaseModel):
+    id: int
+    code: str
+    name: str
+    description: Optional[str] = None
+    visibility: str = "PRIVATE"
+    access_type: str = "PRIVATE_FREE"
+    price: float = 0.0
+    currency: str = "INR"
+    owner_name: str
+    owner_guru_id: str
+    owner_username: Optional[str] = None
+    owner_avatar_url: Optional[str] = None
+    owner_followers_count: int = 0
+    active_members_count: int = 0
+    total_resources_count: int = 0
+    folders: List[RoomPreviewFolderOut] = []
+    preview_resources: List[RoomPreviewResourceOut] = []
+    user_membership_status: Optional[str] = None
+
+class JoinRequestOut(BaseModel):
+    id: int
+    room_id: int
+    room_name: str
+    user_id: int
+    user_name: str
+    user_guru_id: str
+    user_username: Optional[str] = None
+    user_avatar_url: Optional[str] = None
+    status: str
+    created_at: datetime
+
+class JoinRequestAction(BaseModel):
+    action: str  # ACCEPT or REJECT
 
 class RoomMembershipCreate(BaseModel):
     user_id: Optional[int] = None
@@ -144,6 +241,7 @@ class RoomMembershipOut(BaseModel):
     learner_id: Optional[int] = None
     role: str = "MEMBER"
     status: str = "ACTIVE"
+    access_source: Optional[str] = "FREE_JOIN"
     joined_at: datetime
     created_at: datetime
     user: Optional[UserOut] = None
@@ -152,6 +250,43 @@ class RoomMembershipOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+# Search Schemas
+class SearchMemberResult(BaseModel):
+    id: int
+    guru_id: str
+    username: str
+    full_name: str
+    avatar_url: Optional[str] = None
+    bio: Optional[str] = None
+    followers_count: int = 0
+    rooms_owned_count: int = 0
+
+class SearchRoomResult(BaseModel):
+    id: int
+    code: str
+    name: str
+    description: Optional[str] = None
+    access_type: str
+    price: float = 0.0
+    owner_name: Optional[str] = None
+    owner_guru_id: Optional[str] = None
+
+class SearchResourceResult(BaseModel):
+    id: int
+    room_id: int
+    room_name: str
+    title: str
+    description: Optional[str] = None
+    resource_type: str
+    file_url: Optional[str] = None
+    external_url: Optional[str] = None
+
+class UniversalSearchResult(BaseModel):
+    query: str
+    members: List[SearchMemberResult] = []
+    rooms: List[SearchRoomResult] = []
+    resources: List[SearchResourceResult] = []
 
 # Folder Schemas (Phase 3)
 class FolderCreate(BaseModel):
@@ -183,9 +318,11 @@ class ResourceCreate(BaseModel):
     folder_id: Optional[int] = None
     resource_type: Optional[str] = "PDF"
     file_url: Optional[str] = None
+    external_url: Optional[str] = None
     mime_type: Optional[str] = None
     file_size: Optional[str] = None
     visibility: Optional[str] = "ROOM_ONLY" # PUBLIC or ROOM_ONLY
+    is_preview_allowed: Optional[bool] = False
 
 class ResourceUpdate(BaseModel):
     title: Optional[str] = None
@@ -193,7 +330,9 @@ class ResourceUpdate(BaseModel):
     folder_id: Optional[int] = None
     resource_type: Optional[str] = None
     file_url: Optional[str] = None
+    external_url: Optional[str] = None
     visibility: Optional[str] = None
+    is_preview_allowed: Optional[bool] = None
     is_active: Optional[bool] = None
 
 class ResourceOut(BaseModel):
@@ -204,9 +343,11 @@ class ResourceOut(BaseModel):
     description: Optional[str] = None
     resource_type: str = "PDF"
     file_url: Optional[str] = None
+    external_url: Optional[str] = None
     mime_type: Optional[str] = None
     file_size: Optional[str] = None
     visibility: str = "ROOM_ONLY"
+    is_preview_allowed: bool = False
     is_active: bool = True
     created_at: datetime
     updated_at: Optional[datetime] = None
