@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
 import os
 import shutil
+import re
 from datetime import datetime
 
 from app.core.database import get_db
@@ -58,9 +59,14 @@ def signup(request: SignUpRequest, db: Session = Depends(get_db)):
         )
     assigned_role = raw_role if raw_role in ("TEACHER", "LEARNER") else "MEMBER"
 
-    # Determine username
-    requested_username = (request.username or "").strip().lower()
+    # Determine and validate unique username
+    requested_username = (request.username or "").strip().lower().lstrip("@")
     if requested_username:
+        if not re.match(r"^[a-z0-9_-]{3,30}$", requested_username):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username must be 3-30 characters long and contain only letters, numbers, underscores, or hyphens."
+            )
         if db.query(User).filter(User.username == requested_username).first():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -89,7 +95,7 @@ def signup(request: SignUpRequest, db: Session = Depends(get_db)):
     db.refresh(new_user)
 
     # Backward compatibility: populate legacy Teacher/Learner profiles if requested
-    if request.role == "TEACHER" or request.designation or request.employee_code:
+    if assigned_role == "TEACHER" or request.designation or request.employee_code:
         teacher = Teacher(
             user_id=new_user.id,
             employee_code=request.employee_code or f"EMP-{new_user.id:04d}",
@@ -100,7 +106,7 @@ def signup(request: SignUpRequest, db: Session = Depends(get_db)):
         db.add(teacher)
         db.commit()
 
-    if request.role == "LEARNER" or request.roll_number:
+    if assigned_role == "LEARNER" or request.roll_number:
         current_year = datetime.utcnow().year
         platform_id = f"STU-{current_year}-{new_user.id:06d}"
         learner = Learner(

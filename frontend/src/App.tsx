@@ -7,7 +7,6 @@ import { Reports } from './pages/Reports';
 import { Rooms } from './pages/Rooms';
 import { Discover } from './pages/Discover';
 import { Login } from './pages/Login';
-import { LearnerDashboard } from './pages/LearnerDashboard';
 import { BottomNav } from './components/layout/BottomNav';
 import { DesktopSidebar } from './components/layout/DesktopSidebar';
 import { QuickAddMenuModal } from './components/forms/QuickAddMenuModal';
@@ -210,10 +209,13 @@ export function App() {
             onOpenAction={handleOpenAction}
             onSelectStudent={handleSelectStudent}
             onOpenProfile={() => setIsProfileModalOpen(true)}
+            onNavigateToTab={(tab) => setActiveTab(tab)}
             avatarUrl={teacherProfile.avatarUrl}
             teacherName={teacherProfile.name}
             designation={teacherProfile.designation}
             collegeName={teacherProfile.collegeName}
+            guruId={teacherProfile.guruId}
+            username={teacherProfile.username}
           />
         );
       case 'discover':
@@ -243,10 +245,13 @@ export function App() {
             onOpenAction={handleOpenAction}
             onSelectStudent={handleSelectStudent}
             onOpenProfile={() => setIsProfileModalOpen(true)}
+            onNavigateToTab={(tab) => setActiveTab(tab)}
             avatarUrl={teacherProfile.avatarUrl}
             teacherName={teacherProfile.name}
             designation={teacherProfile.designation}
             collegeName={teacherProfile.collegeName}
+            guruId={teacherProfile.guruId}
+            username={teacherProfile.username}
           />
         );
     }

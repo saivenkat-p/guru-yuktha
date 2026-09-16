@@ -1,6 +1,6 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
-  Users, Sparkles, FileText, BookOpen, Plus, Calendar, Award, ChevronRight, CheckCircle2, Clock
+  Users, Sparkles, FileText, BookOpen, Plus, Calendar, Award, ChevronRight, CheckCircle2, Clock, Compass
 } from 'lucide-react';
 import { HeaderCard } from '../components/layout/HeaderCard';
 import { CreateRoomModal } from '../components/forms/CreateRoomModal';
@@ -12,20 +12,26 @@ interface DashboardProps {
   onOpenAction: (action: string) => void;
   onSelectStudent: (studentId: number) => void;
   onOpenProfile?: () => void;
+  onNavigateToTab?: (tab: 'dashboard' | 'rooms' | 'discover' | 'students' | 'materials' | 'reports') => void;
   avatarUrl?: string;
   teacherName?: string;
   designation?: string;
   collegeName?: string;
+  guruId?: string;
+  username?: string;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
   onOpenAction,
   onSelectStudent,
   onOpenProfile,
+  onNavigateToTab,
   avatarUrl,
   teacherName,
   designation,
   collegeName,
+  guruId,
+  username,
 }) => {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -85,13 +91,71 @@ export const Dashboard: React.FC<DashboardProps> = ({
     <div className="pb-12 space-y-6">
       {/* Top Header Card */}
       <HeaderCard
-        teacherName={teacherName || summary?.teacher_name || 'Faculty Member'}
-        designation={designation || summary?.designation || 'Faculty'}
-        collegeName={collegeName || summary?.college_name || 'Academic Institution'}
+        teacherName={teacherName || summary?.teacher_name || 'Universal Member'}
+        designation={designation || summary?.designation || 'Member'}
+        collegeName={collegeName || summary?.college_name || 'Guru Yuktha Network'}
         avatarUrl={avatarUrl}
         unreadCount={summary?.unread_notifications_count || 0}
+        guruId={guruId}
+        username={username}
         onOpenProfile={onOpenProfile}
       />
+
+      {/* Scenario H: Universal Member Welcome Hero & Quick Actions */}
+      <div className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-purple-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden border border-indigo-700/50">
+        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
+        
+        <div className="relative z-10 max-w-2xl space-y-3">
+          <div className="inline-flex items-center space-x-2 px-3 py-1 bg-white/10 rounded-full text-xs font-bold text-indigo-200 border border-white/10">
+            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+            <span>Universal Member Workspace</span>
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-black tracking-tight">
+            Welcome to Guru Yuktha
+          </h2>
+          <p className="text-xs sm:text-sm text-indigo-200 leading-relaxed">
+            Every member can teach and learn. Create your own rooms to share knowledge, or discover Gurus and join rooms to expand your horizons.
+          </p>
+
+          <div className="flex flex-wrap gap-2.5 pt-3">
+            <button
+              onClick={() => setIsCreateRoomOpen(true)}
+              className="px-4 py-2.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl text-xs font-bold transition-all shadow-md inline-flex items-center space-x-1.5 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Create a Room</span>
+            </button>
+            <button
+              onClick={() => onNavigateToTab?.('discover')}
+              className="px-4 py-2.5 bg-white/15 hover:bg-white/25 text-white rounded-xl text-xs font-bold transition-all border border-white/20 inline-flex items-center space-x-1.5 cursor-pointer"
+            >
+              <Compass className="w-4 h-4" />
+              <span>Discover Gurus</span>
+            </button>
+            <button
+              onClick={() => onNavigateToTab?.('discover')}
+              className="px-4 py-2.5 bg-white/15 hover:bg-white/25 text-white rounded-xl text-xs font-bold transition-all border border-white/20 inline-flex items-center space-x-1.5 cursor-pointer"
+            >
+              <BookOpen className="w-4 h-4" />
+              <span>Discover Rooms</span>
+            </button>
+            <button
+              onClick={() => onNavigateToTab?.('rooms')}
+              className="px-4 py-2.5 bg-white/15 hover:bg-white/25 text-white rounded-xl text-xs font-bold transition-all border border-white/20 inline-flex items-center space-x-1.5 cursor-pointer"
+            >
+              <Users className="w-4 h-4" />
+              <span>Join a Room</span>
+            </button>
+            <button
+              onClick={() => onNavigateToTab?.('discover')}
+              className="px-4 py-2.5 bg-white/15 hover:bg-white/25 text-white rounded-xl text-xs font-bold transition-all border border-white/20 inline-flex items-center space-x-1.5 cursor-pointer"
+            >
+              <FileText className="w-4 h-4" />
+              <span>Explore Public Resources</span>
+            </button>
+          </div>
+        </div>
+      </div>
 
       <div className="space-y-6">
         {/* Title Bar */}
@@ -235,18 +299,32 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
 
           {rooms.length === 0 ? (
-            <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 text-center space-y-2 max-w-lg mx-auto">
-              <p className="text-xs font-semibold text-slate-700">No rooms yet.</p>
-              <p className="text-[11px] text-slate-500 max-w-sm mx-auto">
-                Create learning rooms to organize your folders, materials, and tracked students.
-              </p>
-              <button
-                onClick={() => setIsCreateRoomOpen(true)}
-                className="mt-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all inline-flex items-center space-x-1 cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Create Room</span>
-              </button>
+            <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 text-center space-y-3 max-w-lg mx-auto">
+              <div className="w-10 h-10 rounded-xl bg-indigo-100/70 text-indigo-600 flex items-center justify-center mx-auto">
+                <BookOpen className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-slate-800">No rooms yet</h4>
+                <p className="text-[11px] text-slate-500 max-w-sm mx-auto mt-0.5 leading-relaxed">
+                  Start teaching by creating your first room, or explore rooms created by other Gurus across the network.
+                </p>
+              </div>
+              <div className="flex items-center justify-center gap-2 pt-1">
+                <button
+                  onClick={() => setIsCreateRoomOpen(true)}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all inline-flex items-center space-x-1.5 shadow-xs cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Create a Room</span>
+                </button>
+                <button
+                  onClick={() => onNavigateToTab?.('discover')}
+                  className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-bold transition-all inline-flex items-center space-x-1.5 cursor-pointer"
+                >
+                  <Compass className="w-3.5 h-3.5" />
+                  <span>Discover Rooms</span>
+                </button>
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">

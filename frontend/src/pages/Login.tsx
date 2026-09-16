@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { GraduationCap, Mail, Lock, User, Sparkles, AlertCircle, ArrowRight, BookOpen, Compass, CheckCircle2 } from 'lucide-react';
+import { GraduationCap, Mail, Lock, User, Sparkles, AlertCircle, ArrowRight, CheckCircle2, AtSign } from 'lucide-react';
 import { api, setAuthToken } from '../services/api';
 
 interface LoginProps {
@@ -18,10 +18,11 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
   // Sign Up Form (Universal Member)
   const [signUpFullName, setSignUpFullName] = useState('');
   const [signUpEmail, setSignUpEmail] = useState('');
+  const [signUpUsername, setSignUpUsername] = useState('');
   const [signUpPassword, setSignUpPassword] = useState('');
+  const [signUpConfirmPassword, setSignUpConfirmPassword] = useState('');
   const [signUpBio, setSignUpBio] = useState('');
   const [signUpSkills, setSignUpSkills] = useState('');
-  const [signUpInstitution, setSignUpInstitution] = useState('');
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,16 +49,34 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    // Validation
+    if (signUpPassword !== signUpConfirmPassword) {
+      setError('Passwords do not match. Please verify your confirm password.');
+      return;
+    }
+
+    if (signUpPassword.length < 6) {
+      setError('Password must be at least 6 characters long.');
+      return;
+    }
+
+    const cleanUsername = signUpUsername.trim().replace(/^@+/, '').toLowerCase();
+    if (cleanUsername && !/^[a-z0-9_-]{3,30}$/.test(cleanUsername)) {
+      setError('Username must be 3-30 characters with letters, numbers, hyphens or underscores only.');
+      return;
+    }
+
     setLoading(true);
     try {
       const payload = {
         full_name: signUpFullName.trim(),
-        email: signUpEmail.trim(),
+        email: signUpEmail.trim().toLowerCase(),
+        username: cleanUsername || undefined,
         password: signUpPassword,
         role: 'MEMBER',
         bio: signUpBio.trim() || undefined,
         skills: signUpSkills.trim() || undefined,
-        college_name: signUpInstitution.trim() || undefined,
       };
 
       const res = await api.signup(payload);
@@ -66,7 +85,7 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
         onAuthSuccess(res.access_token, res.user);
       }
     } catch (err: any) {
-      setError(err.message || 'Registration failed');
+      setError(err.message || 'Registration failed. Please check your details.');
     } finally {
       setLoading(false);
     }
@@ -115,9 +134,17 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
           </button>
         </div>
 
+        {/* Universal Member Notice */}
+        <div className="mx-6 mt-3 p-3 bg-indigo-50/80 border border-indigo-100 rounded-2xl flex items-center space-x-2.5 text-indigo-900">
+          <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0" />
+          <p className="text-[11px] font-medium leading-tight">
+            <strong className="font-bold">Universal Member:</strong> Every member can teach, learn, own rooms, and join rooms.
+          </p>
+        </div>
+
         {/* Error Alert */}
         {error && (
-          <div className="mx-6 mt-2 p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-center space-x-2 text-rose-700 text-xs font-medium">
+          <div className="mx-6 mt-3 p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-center space-x-2 text-rose-700 text-xs font-medium">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
@@ -125,7 +152,7 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
 
         {/* Sign In View */}
         {mode === 'signin' ? (
-          <form onSubmit={handleSignIn} className="p-6 space-y-4">
+          <form onSubmit={handleSignIn} className="p-6 pt-4 space-y-4">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
                 Email, Username (@username), or Guru ID
@@ -142,7 +169,7 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
                 />
               </div>
               <p className="text-[11px] text-slate-400 mt-1">
-                Sign in with your email, unique @username, or permanent Guru ID.
+                Sign in using your email, unique @username, or permanent Guru ID.
               </p>
             </div>
 
@@ -153,7 +180,7 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
                 </label>
                 <button
                   type="button"
-                  onClick={() => alert('Password reset is managed by academic IT support or platform administrator.')}
+                  onClick={() => alert('Password reset is available through academic support or account email verification.')}
                   className="text-[11px] text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer"
                 >
                   Forgot Password?
@@ -186,21 +213,21 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
                 </>
               )}
             </button>
+
+            {/* Link to Create Account */}
+            <div className="text-center pt-2">
+              <button
+                type="button"
+                onClick={() => { setMode('signup'); setError(null); }}
+                className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold hover:underline cursor-pointer"
+              >
+                New to Guru Yuktha? Create a Member Account
+              </button>
+            </div>
           </form>
         ) : (
           /* Sign Up View (Universal Member) */
-          <form onSubmit={handleSignUp} className="p-6 space-y-3.5 max-h-[65vh] overflow-y-auto pr-2">
-            {/* Universal Member Notice */}
-            <div className="p-3.5 bg-indigo-50/70 border border-indigo-100 rounded-2xl space-y-1">
-              <div className="flex items-center space-x-1.5 text-xs font-bold text-indigo-900">
-                <CheckCircle2 className="w-4 h-4 text-indigo-600" />
-                <span>One Universal Account</span>
-              </div>
-              <p className="text-[11px] text-indigo-700 leading-relaxed">
-                You will receive a permanent Guru ID (<span className="font-mono font-bold">GY-XXXXXXXX</span>) and <span className="font-mono font-bold">@username</span>. You can both teach (own rooms, share knowledge) and learn (join rooms, discover gurus).
-              </p>
-            </div>
-
+          <form onSubmit={handleSignUp} className="p-6 pt-4 space-y-3 max-h-[65vh] overflow-y-auto pr-2">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
                 Full Name *
@@ -237,19 +264,59 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
 
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Password *
+                Username / Unique Profile Handle *
               </label>
               <div className="relative">
-                <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                <AtSign className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                 <input
-                  type="password"
+                  type="text"
                   required
-                  minLength={6}
-                  value={signUpPassword}
-                  onChange={(e) => setSignUpPassword(e.target.value)}
-                  placeholder="Minimum 6 characters"
+                  value={signUpUsername}
+                  onChange={(e) => setSignUpUsername(e.target.value)}
+                  placeholder="e.g. ravi or ravi_teja"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
+              </div>
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                Your unique identity across Guru Yuktha (e.g. @{signUpUsername.replace(/^@+/, '') || 'username'}).
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Password *
+                </label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                  <input
+                    type="password"
+                    required
+                    minLength={6}
+                    value={signUpPassword}
+                    onChange={(e) => setSignUpPassword(e.target.value)}
+                    placeholder="Min 6 chars"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Confirm Password *
+                </label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                  <input
+                    type="password"
+                    required
+                    minLength={6}
+                    value={signUpConfirmPassword}
+                    onChange={(e) => setSignUpConfirmPassword(e.target.value)}
+                    placeholder="Re-enter password"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
               </div>
             </div>
 
@@ -261,7 +328,7 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
                 rows={2}
                 value={signUpBio}
                 onChange={(e) => setSignUpBio(e.target.value)}
-                placeholder="Briefly describe your areas of interest, teaching topics, or learning goals..."
+                placeholder="What topics do you want to teach or learn?"
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
@@ -274,20 +341,7 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
                 type="text"
                 value={signUpSkills}
                 onChange={(e) => setSignUpSkills(e.target.value)}
-                placeholder="e.g. Python, Calculus, English Literature, Web Dev"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                Institution / Organization (Optional)
-              </label>
-              <input
-                type="text"
-                value={signUpInstitution}
-                onChange={(e) => setSignUpInstitution(e.target.value)}
-                placeholder="e.g. Government Degree College or Independent"
+                placeholder="e.g. Python, Machine Learning, Mathematics, English"
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
@@ -295,24 +349,35 @@ export const Login: React.FC<LoginProps> = ({ onAuthSuccess }) => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold text-sm rounded-xl transition-all shadow-md flex items-center justify-center space-x-2 disabled:opacity-50 mt-4 cursor-pointer"
+              className="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold text-sm rounded-xl transition-all shadow-md flex items-center justify-center space-x-2 disabled:opacity-50 mt-3 cursor-pointer"
             >
               {loading ? (
                 <span>Creating Member Account...</span>
               ) : (
                 <>
-                  <span>Join as Member</span>
+                  <span>Create Account</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
             </button>
+
+            {/* Link to Sign In */}
+            <div className="text-center pt-1 pb-1">
+              <button
+                type="button"
+                onClick={() => { setMode('signin'); setError(null); }}
+                className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold hover:underline cursor-pointer"
+              >
+                Already have an account? Sign In
+              </button>
+            </div>
           </form>
         )}
 
         {/* Footer */}
-        <div className="p-4 bg-slate-50 text-center border-t border-slate-100">
+        <div className="p-3.5 bg-slate-50 text-center border-t border-slate-100">
           <p className="text-[11px] text-slate-400 font-medium">
-            Guru Yuktha • Universal Academic &amp; Knowledge Platform
+            Guru Yuktha • Universal Knowledge &amp; Learning Platform
           </p>
         </div>
       </div>
